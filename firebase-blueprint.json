@@ -1,0 +1,733 @@
+{
+  "entities": {
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Trusted administrator document granting store management privileges.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "role": {
+          "type": "string",
+          "description": "Administrator role identifier.",
+          "enum": ["owner", "admin"],
+          "minLength": 4,
+          "maxLength": 16
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin record was created."
+        }
+      },
+      "required": ["uid", "role", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Catalog product item published on the open platform by the store or any verified community seller.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique product identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "UID of the verified user or administrator who published the product.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the garment, plush toy, or item.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "price": {
+          "type": "number",
+          "description": "Selling price in Cordobas (C$)."
+        },
+        "originalPrice": {
+          "type": "number",
+          "description": "Optional original price before discount."
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category name.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "condition": {
+          "type": "string",
+          "description": "Item condition: nueva or usada.",
+          "enum": ["nueva", "usada"],
+          "minLength": 5,
+          "maxLength": 10
+        },
+        "description": {
+          "type": "string",
+          "description": "Product description and details.",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "primaryImageUrl": {
+          "type": "string",
+          "description": "Primary product image URL or optimized data URI.",
+          "minLength": 1,
+          "maxLength": 900000
+        },
+        "sizesCsv": {
+          "type": "string",
+          "description": "Comma-separated list of available sizes.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "colorsCsv": {
+          "type": "string",
+          "description": "Comma-separated list of available colors.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "inStock": {
+          "type": "boolean",
+          "description": "Whether the item is currently in stock."
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Whether the product is highlighted in the catalog."
+        },
+        "sellerName": {
+          "type": "string",
+          "description": "Public name of the seller or store on the platform.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "sellerPhone": {
+          "type": "string",
+          "description": "Seller WhatsApp contact number for direct orders.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "sellerCity": {
+          "type": "string",
+          "description": "Department or city of the seller in Nicaragua.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "name",
+        "price",
+        "category",
+        "condition",
+        "description",
+        "primaryImageUrl",
+        "sizesCsv",
+        "colorsCsv",
+        "inStock",
+        "featured",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BusinessAd": {
+      "title": "BusinessAd",
+      "description": "Nicaraguan business advertisement or free community directory listing.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique advertisement ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the advertiser.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessName": {
+          "type": "string",
+          "description": "Name of the Nicaraguan business.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Name of the business owner or contact person.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Business sector category.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "department": {
+          "type": "string",
+          "description": "Department in Nicaragua.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "headline": {
+          "type": "string",
+          "description": "Main advertising headline.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Business description and offer details.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "promoText": {
+          "type": "string",
+          "description": "Optional coupon or promotional offer.",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Banner image URL or data URI.",
+          "minLength": 1,
+          "maxLength": 900000
+        },
+        "whatsappPhone": {
+          "type": "string",
+          "description": "WhatsApp number for customer clicks.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "websiteOrSocialUrl": {
+          "type": "string",
+          "description": "Optional external website or social profile link.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "ctaText": {
+          "type": "string",
+          "description": "Call to action button label.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "planId": {
+          "type": "string",
+          "description": "Selected advertising plan identifier.",
+          "enum": ["comunidad_gratis", "basico_semanal", "destacado_mensual", "vip_patrocinador"],
+          "minLength": 14,
+          "maxLength": 20
+        },
+        "planName": {
+          "type": "string",
+          "description": "Display name of the selected plan.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "pricePaid": {
+          "type": "number",
+          "description": "Amount paid or 0 for free community plan."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency used for the ad plan.",
+          "enum": ["cordobas", "dolares"],
+          "minLength": 7,
+          "maxLength": 10
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment gateway used or free_plan.",
+          "enum": ["free_plan", "lafise_transfer", "card_online", "payment_link", "mobile_wallet", "cash_on_delivery"],
+          "minLength": 9,
+          "maxLength": 30
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "Payment verification status.",
+          "enum": ["pendiente", "verificando", "pagado", "reembolsado"],
+          "minLength": 6,
+          "maxLength": 20
+        },
+        "paymentReference": {
+          "type": "string",
+          "description": "Transaction reference number.",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "description": "Publication status of the ad.",
+          "enum": ["activo", "pendiente_aprobacion", "pausado", "expirado"],
+          "minLength": 6,
+          "maxLength": 25
+        },
+        "impressions": {
+          "type": "number",
+          "description": "Total views count."
+        },
+        "clicks": {
+          "type": "number",
+          "description": "Total clicks count."
+        },
+        "expiresAtIso": {
+          "type": "string",
+          "description": "Expiration ISO date string.",
+          "minLength": 10,
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "businessName",
+        "ownerName",
+        "category",
+        "department",
+        "headline",
+        "description",
+        "promoText",
+        "imageUrl",
+        "whatsappPhone",
+        "websiteOrSocialUrl",
+        "ctaText",
+        "planId",
+        "planName",
+        "pricePaid",
+        "currency",
+        "paymentMethod",
+        "paymentStatus",
+        "paymentReference",
+        "status",
+        "impressions",
+        "clicks",
+        "expiresAtIso",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPublicProfile": {
+      "title": "UserPublicProfile",
+      "description": "Non-PII customer and seller account profile stored at /users/{userId}.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User public display name or store name.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "city": {
+          "type": "string",
+          "description": "Department or city in Nicaragua.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "favoritesCsv": {
+          "type": "string",
+          "description": "Comma-separated product IDs saved as favorites.",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "loyaltyPoints": {
+          "type": "number",
+          "description": "Accumulated customer loyalty points."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last profile update timestamp."
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "city",
+        "favoritesCsv",
+        "loyaltyPoints",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserPrivateInfo": {
+      "title": "UserPrivateInfo",
+      "description": "Strictly isolated PII customer delivery and contact details stored at /users/{userId}/private/{docId}.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "description": "Customer email address.",
+          "minLength": 0,
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer WhatsApp or phone number.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "address": {
+          "type": "string",
+          "description": "Full delivery street address.",
+          "minLength": 0,
+          "maxLength": 400
+        },
+        "indriveReference": {
+          "type": "string",
+          "description": "Reference landmark for inDrive delivery driver.",
+          "minLength": 0,
+          "maxLength": 400
+        },
+        "preferredPaymentMethod": {
+          "type": "string",
+          "description": "Customer preferred electronic or manual payment method.",
+          "enum": ["lafise_transfer", "card_online", "payment_link", "mobile_wallet", "cash_on_delivery"],
+          "minLength": 10,
+          "maxLength": 30
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "uid",
+        "email",
+        "phone",
+        "address",
+        "indriveReference",
+        "preferredPaymentMethod",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order record containing totals, status, payment method, and isolated owner reference.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Order document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the customer who placed the order.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Recipient name for the order.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Recipient WhatsApp phone number.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "customerAddress": {
+          "type": "string",
+          "description": "Delivery address or pickup indicator.",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "customerCity": {
+          "type": "string",
+          "description": "Customer city or department.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "deliveryMethod": {
+          "type": "string",
+          "description": "Chosen delivery method.",
+          "enum": ["indrive", "departamental", "pickup"],
+          "minLength": 6,
+          "maxLength": 20
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Electronic or traditional payment gateway identifier.",
+          "enum": ["lafise_transfer", "card_online", "payment_link", "mobile_wallet", "cash_on_delivery"],
+          "minLength": 10,
+          "maxLength": 30
+        },
+        "paymentStatus": {
+          "type": "string",
+          "description": "Payment verification status.",
+          "enum": ["pendiente", "verificando", "pagado", "reembolsado"],
+          "minLength": 6,
+          "maxLength": 20
+        },
+        "paymentReference": {
+          "type": "string",
+          "description": "Transaction reference number or electronic receipt code.",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "itemsSummary": {
+          "type": "string",
+          "description": "Formatted summary of purchased items.",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "itemsJson": {
+          "type": "string",
+          "description": "Serialized line items detail for UI display.",
+          "minLength": 2,
+          "maxLength": 8000
+        },
+        "itemsCount": {
+          "type": "number",
+          "description": "Total number of units in the order."
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "Order subtotal in Cordobas."
+        },
+        "discount": {
+          "type": "number",
+          "description": "Discount amount in Cordobas."
+        },
+        "shipping": {
+          "type": "number",
+          "description": "Shipping cost in Cordobas."
+        },
+        "total": {
+          "type": "number",
+          "description": "Final total in Cordobas."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Display currency at checkout.",
+          "enum": ["cordobas", "dolares"],
+          "minLength": 7,
+          "maxLength": 10
+        },
+        "status": {
+          "type": "string",
+          "description": "Fulfillment lifecycle state.",
+          "enum": ["pendiente", "en_preparacion", "enviado", "entregado"],
+          "minLength": 7,
+          "maxLength": 20
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional customer delivery notes.",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Order creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Order last update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "customerName",
+        "customerPhone",
+        "customerAddress",
+        "customerCity",
+        "deliveryMethod",
+        "paymentMethod",
+        "paymentStatus",
+        "paymentReference",
+        "itemsSummary",
+        "itemsJson",
+        "itemsCount",
+        "subtotal",
+        "discount",
+        "shipping",
+        "total",
+        "currency",
+        "status",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderNotification": {
+      "title": "OrderNotification",
+      "description": "Real-time notification for order placement, status transitions, and payment updates.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Notification document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "recipientId": {
+          "type": "string",
+          "description": "Target user UID or ADMIN identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "UID of the user or admin who triggered the notification.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Referenced order ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short notification title.",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "message": {
+          "type": "string",
+          "description": "Detailed notification body.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "type": {
+          "type": "string",
+          "description": "Notification category.",
+          "enum": ["nuevo_pedido", "cambio_estado", "pago_actualizado", "promocion"],
+          "minLength": 9,
+          "maxLength": 20
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether the recipient has read the notification."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Notification creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Notification update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "recipientId",
+        "authorId",
+        "orderId",
+        "title",
+        "message",
+        "type",
+        "read",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Trusted administrator lookup collection."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Open platform catalog products readable by all shoppers and published/managed by verified sellers or admins."
+    },
+    "/business_ads/{adId}": {
+      "schema": { "$ref": "#/entities/BusinessAd" },
+      "description": "Nicaraguan business advertisements and free directory listings published by verified users."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublicProfile" },
+      "description": "Public customer and seller profile data."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivateInfo" },
+      "description": "Isolated PII customer contact, address, and payment preference records."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders with fulfillment status and electronic payment metadata."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/OrderNotification" },
+      "description": "Real-time order notifications for customers and store administration."
+    }
+  }
+}

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Silk & Royal Violet Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B0764" />
+      <stop offset="45%" stop-color="#581C87" />
+      <stop offset="80%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#BE185D" />
+    </linearGradient>
+
+    <!-- Metallic Gold Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="25%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="75%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+
+    <!-- Golden Rim Gradient -->
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#D97706" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#FDE68A" stop-opacity="0.8" />
+    </linearGradient>
+
+    <!-- Subtle Radial Glow -->
+    <radialGradient id="centerGlow" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#3B0764" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="iconShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.45" />
+    </filter>
+
+    <filter id="starGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- 1. Background Squircle with Smooth Rounded Corners -->
+  <rect width="512" height="512" rx="116" fill="url(#bgGrad)" />
+
+  <!-- Ambient Glow -->
+  <circle cx="256" cy="220" r="180" fill="url(#centerGlow)" />
+
+  <!-- 2. Dual Golden Metallic Rim Accent -->
+  <rect x="18" y="18" width="476" height="476" rx="100" fill="none" stroke="url(#rimGrad)" stroke-width="3" />
+  <rect x="24" y="24" width="464" height="464" rx="94" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+
+  <!-- 3. Central Boutique Emblem: Luxury Hanger & Chic Garment Silhouette -->
+  <g filter="url(#iconShadow)">
+    <!-- Hanger Hook Top Curl -->
+    <path d="M 256 92 C 242 92, 230 102, 230 118 C 230 134, 244 146, 256 156 L 256 182"
+          fill="none"
+          stroke="url(#goldGrad)"
+          stroke-width="14"
+          stroke-linecap="round" />
+
+    <!-- Hanger Body Bar (Triangular Luxury Hanger) -->
+    <path d="M 126 244 L 256 182 L 386 244 C 396 250, 386 260, 372 260 L 140 260 C 126 260, 116 250, 126 244 Z"
+          fill="rgba(255, 255, 255, 0.12)"
+          stroke="url(#goldGrad)"
+          stroke-width="12"
+          stroke-linejoin="round" />
+
+    <!-- Crossbar / Trouser Bar with gold accents -->
+    <line x1="148" y1="260" x2="364" y2="260" stroke="url(#goldGrad)" stroke-width="8" stroke-linecap="round" />
+
+    <!-- Stylized Flowing Garment Silhouette (Modern Dress / Blazer drape) -->
+    <path d="M 198 260 C 196 295, 178 340, 156 368 C 196 360, 230 354, 256 358 C 282 354, 316 360, 356 368 C 334 340, 316 295, 314 260 Z"
+          fill="rgba(255, 255, 255, 0.95)" />
+
+    <!-- Waistline Ribbon in Gold Accent -->
+    <path d="M 216 298 Q 256 308 296 298"
+          fill="none"
+          stroke="url(#goldGrad)"
+          stroke-width="6"
+          stroke-linecap="round" />
+
+    <!-- Central Crest Initial "J" -->
+    <text x="256" y="342"
+          font-family="'Playfair Display', Georgia, serif"
+          font-size="36"
+          font-weight="900"
+          font-style="italic"
+          text-anchor="middle"
+          fill="#581C87">
+      J
+    </text>
+
+    <!-- Luxury Sparkling Stars -->
+    <!-- Star 1 Top Right -->
+    <path d="M 368 120 L 373 134 L 387 139 L 373 144 L 368 158 L 363 144 L 349 139 L 363 134 Z"
+          fill="#FFFBEB"
+          filter="url(#starGlow)" />
+    <!-- Star 2 Left Mid -->
+    <path d="M 130 160 L 133 170 L 143 173 L 133 176 L 130 186 L 127 176 L 117 173 L 127 170 Z"
+          fill="#FDE68A" />
+    <!-- Star 3 Right Lower -->
+    <path d="M 378 290 L 381 298 L 389 301 L 381 304 L 378 312 L 375 304 L 367 301 L 375 298 Z"
+          fill="#FDE68A" />
+  </g>
+
+  <!-- 4. Typography Badge at Bottom -->
+  <!-- Brand Main Title -->
+  <text x="256" y="428"
+        font-family="'Playfair Display', Georgia, serif"
+        font-size="34"
+        font-weight="900"
+        letter-spacing="1.5"
+        text-anchor="middle"
+        fill="#FFFFFF">
+    EL CLÓSET DE JIÉ
+  </text>
+
+  <!-- Subtitle Tagline in Gold -->
+  <text x="256" y="458"
+        font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', sans-serif"
+        font-size="13"
+        font-weight="800"
+        letter-spacing="5"
+        text-anchor="middle"
+        fill="#FDE68A">
+    BOUTIQUE • NICARAGUA
+  </text>
+</svg>

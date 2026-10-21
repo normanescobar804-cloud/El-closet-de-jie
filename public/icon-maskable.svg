@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Silk & Royal Violet Gradient (Full Bleed) -->
+    <linearGradient id="bgGradMask" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B0764" />
+      <stop offset="45%" stop-color="#581C87" />
+      <stop offset="80%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#BE185D" />
+    </linearGradient>
+
+    <!-- Metallic Gold Gradient -->
+    <linearGradient id="goldGradMask" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBEB" />
+      <stop offset="25%" stop-color="#FDE68A" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="75%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+
+    <!-- Subtle Center Glow -->
+    <radialGradient id="centerGlowMask" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#A855F7" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#3B0764" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- 1. Full Bleed Background for Maskable Icon -->
+  <rect width="512" height="512" fill="url(#bgGradMask)" />
+  <circle cx="256" cy="240" r="190" fill="url(#centerGlowMask)" />
+
+  <!-- 2. Content strictly confined within the Central 80% Safe Zone (radius <= 200px from center) -->
+  <g transform="translate(256, 230) scale(0.78) translate(-256, -240)">
+    <!-- Hanger Hook Top Curl -->
+    <path d="M 256 92 C 242 92, 230 102, 230 118 C 230 134, 244 146, 256 156 L 256 182"
+          fill="none"
+          stroke="url(#goldGradMask)"
+          stroke-width="15"
+          stroke-linecap="round" />
+
+    <!-- Hanger Body Bar (Triangular Luxury Hanger) -->
+    <path d="M 126 244 L 256 182 L 386 244 C 396 250, 386 260, 372 260 L 140 260 C 126 260, 116 250, 126 244 Z"
+          fill="rgba(255, 255, 255, 0.14)"
+          stroke="url(#goldGradMask)"
+          stroke-width="13"
+          stroke-linejoin="round" />
+
+    <line x1="148" y1="260" x2="364" y2="260" stroke="url(#goldGradMask)" stroke-width="8" stroke-linecap="round" />
+
+    <!-- Stylized Flowing Garment Silhouette -->
+    <path d="M 198 260 C 196 295, 178 340, 156 368 C 196 360, 230 354, 256 358 C 282 354, 316 360, 356 368 C 334 340, 316 295, 314 260 Z"
+          fill="rgba(255, 255, 255, 0.96)" />
+
+    <!-- Central Initial "J" -->
+    <text x="256" y="342"
+          font-family="'Playfair Display', Georgia, serif"
+          font-size="38"
+          font-weight="900"
+          font-style="italic"
+          text-anchor="middle"
+          fill="#581C87">
+      J
+    </text>
+
+    <!-- Sparkling Stars -->
+    <path d="M 368 120 L 373 134 L 387 139 L 373 144 L 368 158 L 363 144 L 349 139 L 363 134 Z" fill="#FFFBEB" />
+    <path d="M 130 160 L 133 170 L 143 173 L 133 176 L 130 186 L 127 176 L 117 173 L 127 170 Z" fill="#FDE68A" />
+    <path d="M 378 290 L 381 298 L 389 301 L 381 304 L 378 312 L 375 304 L 367 301 L 375 298 Z" fill="#FDE68A" />
+
+    <!-- Brand Typography in Safe Zone -->
+    <text x="256" y="420"
+          font-family="'Playfair Display', Georgia, serif"
+          font-size="32"
+          font-weight="900"
+          letter-spacing="2"
+          text-anchor="middle"
+          fill="#FFFFFF">
+      EL CLÓSET DE JIÉ
+    </text>
+
+    <text x="256" y="448"
+          font-family="-apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', sans-serif"
+          font-size="13"
+          font-weight="800"
+          letter-spacing="4"
+          text-anchor="middle"
+          fill="#FDE68A">
+      BOUTIQUE • NICARAGUA
+    </text>
+  </g>
+</svg>
