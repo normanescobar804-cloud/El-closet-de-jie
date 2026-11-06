@@ -95,6 +95,8 @@ import {
   subscribeToCloudBusinessAds,
   subscribeToUserOrders,
   subscribeToUserNotifications,
+  subscribeToAllUsers,
+  seedInitialCatalogToCloud,
   ADMIN_OWNER_EMAIL
 } from './firebase';
 import { PRODUCT_CATEGORIES } from './data/initialProducts';
@@ -145,6 +147,7 @@ export default function App() {
   const [currency, setCurrency] = useState<CurrencyType>(getSavedCurrency);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(getAnalyticsData);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
+  const [cloudUsers, setCloudUsers] = useState<UserAccount[]>([]);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(getSavedRecentlyViewed);
   const [testimonials, setTestimonials] = useState<CustomerTestimonial[]>(getSavedTestimonials);
 
@@ -315,6 +318,7 @@ export default function App() {
   useEffect(() => {
     let unsubOrders: (() => void) | null = null;
     let unsubNotifs: (() => void) | null = null;
+    let unsubUsers: (() => void) | null = null;
 
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubOrders) {
@@ -324,6 +328,10 @@ export default function App() {
       if (unsubNotifs) {
         unsubNotifs();
         unsubNotifs = null;
+      }
+      if (unsubUsers) {
+        unsubUsers();
+        unsubUsers = null;
       }
 
       if (fbUser) {
@@ -368,6 +376,14 @@ export default function App() {
               });
             }
           });
+
+          if (isOwnerAdmin) {
+            unsubUsers = subscribeToAllUsers((loadedUsers) => {
+              if (loadedUsers.length > 0) {
+                setCloudUsers(loadedUsers);
+              }
+            });
+          }
         } catch (err) {
           console.warn('Cloud account sync notice:', err);
         }
@@ -378,6 +394,7 @@ export default function App() {
       unsubAuth();
       if (unsubOrders) unsubOrders();
       if (unsubNotifs) unsubNotifs();
+      if (unsubUsers) unsubUsers();
     };
   }, []);
 
@@ -870,6 +887,7 @@ export default function App() {
         unreadNotificationsCount={unreadNotificationsCount}
         unreadChatCount={unreadChatCount}
         currentUser={currentUser}
+        isCloudConnected={isCloudConnected}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         products={products}
@@ -2076,7 +2094,7 @@ export default function App() {
         products={products}
         storeSettings={storeSettings}
         orders={orders}
-        customers={currentUser ? [currentUser] : []}
+        customers={cloudUsers.length > 0 ? cloudUsers : (currentUser ? [currentUser] : [])}
         businessAds={businessAds}
         currency={currency}
         isCloudConnected={isCloudConnected}

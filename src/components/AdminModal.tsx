@@ -83,7 +83,14 @@ import {
   getPaymentStatusBadge
 } from '../utils/paymentGateways';
 import { DEFAULT_ADSENSE_CONFIG } from '../utils/advertising';
-import { grantCurrentUserAdminRole, signInWithGooglePopup, auth, ADMIN_OWNER_EMAIL } from '../firebase';
+import {
+  grantCurrentUserAdminRole,
+  signInWithGooglePopup,
+  auth,
+  ADMIN_OWNER_EMAIL,
+  uploadProductImageToStorage,
+  seedInitialCatalogToCloud
+} from '../firebase';
 import { generateReceiptPdf } from '../utils/generateReceiptPdf';
 import { exportOrdersToCsv } from '../utils/exportOrdersCsv';
 
@@ -174,6 +181,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [showSettingsPin, setShowSettingsPin] = useState(false);
   const [pinError, setPinError] = useState('');
   const [isGrantingCloudAdmin, setIsGrantingCloudAdmin] = useState(false);
+  const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<
@@ -473,6 +482,22 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const handleUnlock = handlePinUnlock;
   const handleLinkCloudAdmin = handleGoogleAdminLogin;
 
+  const handleBulkSyncToFirebase = async () => {
+    setIsSyncingCatalog(true);
+    setSyncFeedback(null);
+    try {
+      const count = await seedInitialCatalogToCloud(products);
+      setSyncFeedback(`¡${count} productos sincronizados con éxito en Firebase Firestore!`);
+      setTimeout(() => setSyncFeedback(null), 5000);
+    } catch (err) {
+      console.error(err);
+      setSyncFeedback('Error al sincronizar catálogo con Firebase.');
+      setTimeout(() => setSyncFeedback(null), 5000);
+    } finally {
+      setIsSyncingCatalog(false);
+    }
+  };
+
   // Open Form to Create New Product
   const handleOpenCreateProduct = () => {
     setEditingId(null);
@@ -513,23 +538,24 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     setIsEditingProduct(true);
   };
 
-  // 📸 Subida de fotos en Alta Resolución
+  // 📸 Subida de fotos a Firebase Storage en Alta Resolución
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploadingImage(true);
-    setImageUploadMessage('Optimizando foto en alta resolución...');
+    setImageUploadMessage('Subiendo foto(s) a Firebase Storage...');
 
     try {
       const newImagesList: string[] = [...images];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const processedDataUrl = await processHighResImage(file);
-        newImagesList.push(processedDataUrl);
+        setImageUploadMessage(`Subiendo foto ${i + 1} de ${files.length} a Firebase Storage...`);
+        const storageUrl = await uploadProductImageToStorage(file, `prod-${name || 'prenda'}`);
+        newImagesList.push(storageUrl);
       }
       setImages(newImagesList);
-      setImageUploadMessage(`¡${files.length} foto(s) cargada(s) con éxito en alta resolución!`);
+      setImageUploadMessage(`¡${files.length} foto(s) subida(s) con éxito a Firebase Storage!`);
       setTimeout(() => setImageUploadMessage(''), 3000);
     } catch (err) {
       console.error(err);
@@ -547,19 +573,20 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
 
     setIsUploadingImage(true);
-    setImageUploadMessage('Optimizando foto en alta resolución...');
+    setImageUploadMessage('Subiendo foto(s) a Firebase Storage...');
 
     try {
       const newImagesList: string[] = [...images];
       for (let i = 0; i < e.dataTransfer.files.length; i++) {
         const file = e.dataTransfer.files[i];
         if (file.type.startsWith('image/')) {
-          const processedDataUrl = await processHighResImage(file);
-          newImagesList.push(processedDataUrl);
+          setImageUploadMessage(`Subiendo foto ${i + 1} de ${e.dataTransfer.files.length} a Firebase Storage...`);
+          const storageUrl = await uploadProductImageToStorage(file, `prod-${name || 'prenda'}`);
+          newImagesList.push(storageUrl);
         }
       }
       setImages(newImagesList);
-      setImageUploadMessage('¡Foto cargada exitosamente!');
+      setImageUploadMessage('¡Foto(s) subida(s) a Firebase Storage con éxito!');
       setTimeout(() => setImageUploadMessage(''), 3000);
     } catch (err) {
       console.error(err);
@@ -1785,15 +1812,36 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         </select>
                       </div>
 
-                      <button
-                        id="btn-admin-create-product"
-                        onClick={handleOpenCreateProduct}
-                        className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>+ Nueva Prenda</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          id="btn-admin-sync-cloud-catalog"
+                          onClick={handleBulkSyncToFirebase}
+                          disabled={isSyncingCatalog}
+                          className="bg-violet-700 hover:bg-violet-800 disabled:opacity-50 text-white text-xs font-bold py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+                          title="Sincronizar todo el catálogo de productos con Firebase Firestore para todos los dispositivos"
+                        >
+                          <Sparkles className="w-4 h-4 text-amber-300" />
+                          <span>{isSyncingCatalog ? 'Sincronizando...' : '☁️ Sincronizar con Firebase'}</span>
+                        </button>
+
+                        <button
+                          id="btn-admin-create-product"
+                          onClick={handleOpenCreateProduct}
+                          className="bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 shadow-xs shrink-0 cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>+ Nueva Prenda</span>
+                        </button>
+                      </div>
                     </div>
+
+                    {syncFeedback && (
+                      <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl text-xs font-semibold flex items-center gap-2">
+                        <span>☁️</span>
+                        <span>{syncFeedback}</span>
+                      </div>
+                    )}
 
                     <div className="divide-y divide-stone-100 border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-xs">
                       {filteredProducts.length === 0 ? (

@@ -20,6 +20,7 @@ import { CurrencyType, Product, StoreSettings, UserAccount } from '../types';
 import { PRODUCT_CATEGORIES } from '../data/initialProducts';
 import { NICARAGUA_DEPARTMENTS } from '../utils/advertising';
 import { formatCurrency, processHighResImage } from '../utils/storage';
+import { uploadProductImageToStorage } from '../firebase';
 
 interface FreeSellerPortalModalProps {
   isOpen: boolean;
@@ -143,10 +144,16 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
     if (!file) return;
     setIsUploading(true);
     try {
-      const processed = await processHighResImage(file);
-      setImageUrl(processed);
+      const storageUrl = await uploadProductImageToStorage(file, `vendedor-${name || 'prenda'}`);
+      setImageUrl(storageUrl);
     } catch (err) {
-      console.error('Error uploading product photo:', err);
+      console.error('Error uploading product photo to Firebase Storage:', err);
+      try {
+        const processed = await processHighResImage(file);
+        setImageUrl(processed);
+      } catch (fallbackErr) {
+        console.error('Fallback error:', fallbackErr);
+      }
     } finally {
       setIsUploading(false);
     }

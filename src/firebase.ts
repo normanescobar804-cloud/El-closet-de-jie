@@ -22,6 +22,13 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
+import {
+  getStorage,
+  ref,
+  uploadString,
+  uploadBytes,
+  getDownloadURL
+} from 'firebase/storage';
 import firebaseConfig from './firebase-applet-config.json';
 import {
   AdPlanId,
@@ -35,10 +42,11 @@ import {
   UserAccount
 } from './types';
 
-// Initialize Firebase App, Firestore Database, and Auth
+// Initialize Firebase App, Firestore Database, Auth, and Storage
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export const ADMIN_OWNER_EMAIL = 'normanescobar804@gmail.com';
@@ -952,6 +960,84 @@ export function subscribeToUserNotifications(
       handleFirestoreError(error, OperationType.LIST, 'notifications');
     }
   );
+}
+
+// ============================================================================
+// Firebase Storage: Cloud Image Upload for Products & Media
+// ============================================================================
+export async function uploadProductImageToStorage(
+  fileOrDataUrl: File | string,
+  preferredName?: string
+): Promise<string> {
+  const cleanName = sanitizeId(preferredName || `img-${Date.now()}`);
+  const storagePath = `products/${cleanName}-${Date.now()}.jpg`;
+
+  try {
+    const storageRef = ref(storage, storagePath);
+    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
+      const snap = await uploadString(storageRef, fileOrDataUrl, 'data_url');
+      return await getDownloadURL(snap.ref);
+    } else if (fileOrDataUrl instanceof File) {
+      const snap = await uploadBytes(storageRef, fileOrDataUrl);
+      return await getDownloadURL(snap.ref);
+    }
+    return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '/portada.jpg';
+  } catch (error) {
+    console.warn('Firebase Storage notice, retaining optimized cloud payload:', error);
+    return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '/portada.jpg';
+  }
+}
+
+// ============================================================================
+// Real-time Cloud Users Directory Subscription (For Admin & Live Community)
+// ============================================================================
+export function subscribeToAllUsers(
+  onUsersUpdate: (users: UserAccount[]) => void
+): () => void {
+  const usersQuery = query(collection(db, 'users'));
+  return onSnapshot(
+    usersQuery,
+    (snapshot) => {
+      const loaded: UserAccount[] = snapshot.docs.map((docSnap) => {
+        const d = docSnap.data();
+        return {
+          uid: String(d.uid || docSnap.id),
+          name: String(d.displayName || 'Usuario'),
+          email: '',
+          phone: '',
+          city: String(d.city || 'Managua'),
+          department: String(d.city || 'Managua'),
+          storeName: String(d.displayName || 'Usuario'),
+          preferredPaymentMethod: 'transferencia_lafise',
+          role: 'customer',
+          isLoggedIn: false,
+          createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : Date.now(),
+          updatedAt: d.updatedAt instanceof Timestamp ? d.updatedAt.toMillis() : Date.now()
+        };
+      });
+      onUsersUpdate(loaded);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'users');
+    }
+  );
+}
+
+// ============================================================================
+// Bulk Cloud Catalog Real-time Synchronization
+// ============================================================================
+export async function seedInitialCatalogToCloud(productsToSeed: Product[]): Promise<number> {
+  if (!auth.currentUser) return 0;
+  let count = 0;
+  for (const product of productsToSeed) {
+    try {
+      await saveProductToCloud(product);
+      count++;
+    } catch (e) {
+      console.warn('Catalog cloud sync notice for:', product.name, e);
+    }
+  }
+  return count;
 }
 
 export { onAuthStateChanged };

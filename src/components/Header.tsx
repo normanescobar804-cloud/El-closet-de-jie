@@ -59,6 +59,7 @@ interface HeaderProps {
   onOpenContact?: () => void;
   onOpenExportGitHub?: () => void;
   onLogout: () => void;
+  isCloudConnected?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -96,6 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
   todayViews,
   onOpenExportGitHub,
   onLogout,
+  isCloudConnected = true,
 }) => {
   const isCordobas = currency === 'NIO' || currency === 'cordobas';
 
@@ -120,6 +122,14 @@ export const Header: React.FC<HeaderProps> = ({
         <span className="hidden sm:inline text-white/50">·</span>
         <span className="text-amber-200 hidden sm:inline">
           Compra con 20% OFF o Publica y Vende tus Productos 100% Gratis
+        </span>
+        <span className="hidden lg:inline text-white/40">·</span>
+        <span className="hidden lg:inline-flex items-center gap-1.5 text-emerald-300 font-mono text-[10px] bg-emerald-950/70 px-2 py-0.5 rounded-full border border-emerald-500/40">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+          </span>
+          <span>Firebase En Vivo · Tiempo Real</span>
         </span>
       </div>
 
@@ -595,6 +605,18 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
 
               <div className="h-4 w-px bg-stone-200 mx-0.5" />
+
+              {/* Real-time Cloud Status Indicator */}
+              <div
+                className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/90 rounded-lg text-[11px] font-bold shadow-2xs shrink-0 select-none"
+                title={isCloudConnected ? "Tienda en tiempo real sincronizada con Firebase (Auth + Firestore + Storage)" : "Modo sin conexión local"}
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${isCloudConnected ? 'bg-emerald-400' : 'bg-amber-400'} opacity-75`}></span>
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isCloudConnected ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                </span>
+                <span>{isCloudConnected ? 'Tiempo Real' : 'Local'}</span>
+              </div>
 
               {/* 👩‍💼 Administrador */}
               <button
