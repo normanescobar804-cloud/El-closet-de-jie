@@ -1,0 +1,614 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Phase 3: Global Hardened Primitives
+    // =========================================================================
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isBootstrappedOwner() {
+      return isVerifiedUser() && request.auth.token.email == 'normanescobar804@gmail.com';
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        isBootstrappedOwner() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // =========================================================================
+    // Validation Blueprints (Pillar 2: The "Anti-Update-Gap")
+    // =========================================================================
+
+    function isValidAdminRole(data) {
+      return data.keys().hasAll(['uid', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'role', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.role is string && data.role.size() >= 4 && data.role.size() <= 16 &&
+        (data.role == 'owner' || data.role == 'admin') &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'id', 'authorId', 'name', 'price', 'category', 'condition',
+          'description', 'primaryImageUrl', 'sizesCsv', 'colorsCsv',
+          'inStock', 'featured', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'authorId', 'name', 'price', 'originalPrice', 'category', 'condition',
+          'description', 'primaryImageUrl', 'sizesCsv', 'colorsCsv',
+          'inStock', 'featured', 'sellerName', 'sellerPhone', 'sellerCity',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.authorId) &&
+        data.authorId == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 160 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000 &&
+        (!('originalPrice' in data) || (data.originalPrice is number && data.originalPrice >= 0 && data.originalPrice <= 1000000)) &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 80 &&
+        data.condition is string && data.condition.size() >= 5 && data.condition.size() <= 10 &&
+        (data.condition == 'nueva' || data.condition == 'usada') &&
+        data.description is string && data.description.size() >= 0 && data.description.size() <= 2000 &&
+        data.primaryImageUrl is string && data.primaryImageUrl.size() >= 1 && data.primaryImageUrl.size() <= 900000 &&
+        data.sizesCsv is string && data.sizesCsv.size() >= 1 && data.sizesCsv.size() <= 200 &&
+        data.colorsCsv is string && data.colorsCsv.size() >= 1 && data.colorsCsv.size() <= 200 &&
+        data.inStock is bool &&
+        data.featured is bool &&
+        (!('sellerName' in data) || (data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 120)) &&
+        (!('sellerPhone' in data) || (data.sellerPhone is string && data.sellerPhone.size() >= 1 && data.sellerPhone.size() <= 40)) &&
+        (!('sellerCity' in data) || (data.sellerCity is string && data.sellerCity.size() >= 1 && data.sellerCity.size() <= 80)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBusinessAd(data) {
+      return data.keys().hasAll([
+          'id', 'authorId', 'businessName', 'ownerName', 'category', 'department',
+          'headline', 'description', 'promoText', 'imageUrl', 'whatsappPhone',
+          'websiteOrSocialUrl', 'ctaText', 'planId', 'planName', 'pricePaid',
+          'currency', 'paymentMethod', 'paymentStatus', 'paymentReference',
+          'status', 'impressions', 'clicks', 'expiresAtIso', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'authorId', 'businessName', 'ownerName', 'category', 'department',
+          'headline', 'description', 'promoText', 'imageUrl', 'whatsappPhone',
+          'websiteOrSocialUrl', 'ctaText', 'planId', 'planName', 'pricePaid',
+          'currency', 'paymentMethod', 'paymentStatus', 'paymentReference',
+          'status', 'impressions', 'clicks', 'expiresAtIso', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.authorId) &&
+        data.authorId == request.auth.uid &&
+        data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 120 &&
+        data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 120 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 80 &&
+        data.department is string && data.department.size() >= 1 && data.department.size() <= 80 &&
+        data.headline is string && data.headline.size() >= 1 && data.headline.size() <= 200 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 1000 &&
+        data.promoText is string && data.promoText.size() >= 0 && data.promoText.size() <= 200 &&
+        data.imageUrl is string && data.imageUrl.size() >= 1 && data.imageUrl.size() <= 900000 &&
+        data.whatsappPhone is string && data.whatsappPhone.size() >= 1 && data.whatsappPhone.size() <= 40 &&
+        data.websiteOrSocialUrl is string && data.websiteOrSocialUrl.size() >= 0 && data.websiteOrSocialUrl.size() <= 300 &&
+        data.ctaText is string && data.ctaText.size() >= 1 && data.ctaText.size() <= 80 &&
+        data.planId is string && data.planId.size() >= 14 && data.planId.size() <= 20 &&
+        (
+          data.planId == 'comunidad_gratis' ||
+          data.planId == 'basico_semanal' ||
+          data.planId == 'destacado_mensual' ||
+          data.planId == 'vip_patrocinador'
+        ) &&
+        data.planName is string && data.planName.size() >= 1 && data.planName.size() <= 120 &&
+        data.pricePaid is number && data.pricePaid >= 0 && data.pricePaid <= 100000 &&
+        data.currency is string && data.currency.size() >= 7 && data.currency.size() <= 10 &&
+        (data.currency == 'cordobas' || data.currency == 'dolares') &&
+        data.paymentMethod is string && data.paymentMethod.size() >= 9 && data.paymentMethod.size() <= 30 &&
+        (
+          data.paymentMethod == 'free_plan' ||
+          data.paymentMethod == 'lafise_transfer' ||
+          data.paymentMethod == 'card_online' ||
+          data.paymentMethod == 'payment_link' ||
+          data.paymentMethod == 'mobile_wallet' ||
+          data.paymentMethod == 'cash_on_delivery'
+        ) &&
+        data.paymentStatus is string && data.paymentStatus.size() >= 6 && data.paymentStatus.size() <= 20 &&
+        (
+          data.paymentStatus == 'pendiente' ||
+          data.paymentStatus == 'verificando' ||
+          data.paymentStatus == 'pagado' ||
+          data.paymentStatus == 'reembolsado'
+        ) &&
+        data.paymentReference is string && data.paymentReference.size() >= 0 && data.paymentReference.size() <= 120 &&
+        data.status is string && data.status.size() >= 6 && data.status.size() <= 25 &&
+        (
+          data.status == 'activo' ||
+          data.status == 'pendiente_aprobacion' ||
+          data.status == 'pausado' ||
+          data.status == 'expirado'
+        ) &&
+        data.impressions is int && data.impressions >= 0 && data.impressions <= 10000000 &&
+        data.clicks is int && data.clicks >= 0 && data.clicks <= 10000000 &&
+        data.expiresAtIso is string && data.expiresAtIso.size() >= 10 && data.expiresAtIso.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserPublicProfile(data) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'city', 'favoritesCsv', 'loyaltyPoints', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'displayName', 'city', 'favoritesCsv', 'loyaltyPoints', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
+        data.favoritesCsv is string && data.favoritesCsv.size() >= 0 && data.favoritesCsv.size() <= 2000 &&
+        data.loyaltyPoints is number && data.loyaltyPoints >= 0 && data.loyaltyPoints <= 1000000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidUserPrivateInfo(data) {
+      return data.keys().hasAll([
+          'uid', 'email', 'phone', 'address', 'indriveReference',
+          'preferredPaymentMethod', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'email', 'phone', 'address', 'indriveReference',
+          'preferredPaymentMethod', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.email is string && data.email.size() >= 0 && data.email.size() <= 160 &&
+        data.phone is string && data.phone.size() >= 1 && data.phone.size() <= 40 &&
+        data.address is string && data.address.size() >= 0 && data.address.size() <= 400 &&
+        data.indriveReference is string && data.indriveReference.size() >= 0 && data.indriveReference.size() <= 400 &&
+        data.preferredPaymentMethod is string && data.preferredPaymentMethod.size() >= 10 && data.preferredPaymentMethod.size() <= 30 &&
+        (
+          data.preferredPaymentMethod == 'lafise_transfer' ||
+          data.preferredPaymentMethod == 'card_online' ||
+          data.preferredPaymentMethod == 'payment_link' ||
+          data.preferredPaymentMethod == 'mobile_wallet' ||
+          data.preferredPaymentMethod == 'cash_on_delivery'
+        ) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+          'id', 'customerId', 'customerName', 'customerPhone', 'customerAddress',
+          'customerCity', 'deliveryMethod', 'paymentMethod', 'paymentStatus',
+          'paymentReference', 'itemsSummary', 'itemsJson', 'itemsCount',
+          'subtotal', 'discount', 'shipping', 'total', 'currency',
+          'status', 'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'customerId', 'customerName', 'customerPhone', 'customerAddress',
+          'customerCity', 'deliveryMethod', 'paymentMethod', 'paymentStatus',
+          'paymentReference', 'itemsSummary', 'itemsJson', 'itemsCount',
+          'subtotal', 'discount', 'shipping', 'total', 'currency',
+          'status', 'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.customerId) &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120 &&
+        data.customerPhone is string && data.customerPhone.size() >= 1 && data.customerPhone.size() <= 40 &&
+        data.customerAddress is string && data.customerAddress.size() >= 1 && data.customerAddress.size() <= 400 &&
+        data.customerCity is string && data.customerCity.size() >= 1 && data.customerCity.size() <= 80 &&
+        data.deliveryMethod is string && data.deliveryMethod.size() >= 6 && data.deliveryMethod.size() <= 20 &&
+        (
+          data.deliveryMethod == 'indrive' ||
+          data.deliveryMethod == 'departamental' ||
+          data.deliveryMethod == 'pickup'
+        ) &&
+        data.paymentMethod is string && data.paymentMethod.size() >= 10 && data.paymentMethod.size() <= 30 &&
+        (
+          data.paymentMethod == 'lafise_transfer' ||
+          data.paymentMethod == 'card_online' ||
+          data.paymentMethod == 'payment_link' ||
+          data.paymentMethod == 'mobile_wallet' ||
+          data.paymentMethod == 'cash_on_delivery'
+        ) &&
+        data.paymentStatus is string && data.paymentStatus.size() >= 6 && data.paymentStatus.size() <= 20 &&
+        (
+          data.paymentStatus == 'pendiente' ||
+          data.paymentStatus == 'verificando' ||
+          data.paymentStatus == 'pagado' ||
+          data.paymentStatus == 'reembolsado'
+        ) &&
+        data.paymentReference is string && data.paymentReference.size() >= 0 && data.paymentReference.size() <= 120 &&
+        data.itemsSummary is string && data.itemsSummary.size() >= 1 && data.itemsSummary.size() <= 2000 &&
+        data.itemsJson is string && data.itemsJson.size() >= 2 && data.itemsJson.size() <= 8000 &&
+        data.itemsCount is int && data.itemsCount >= 1 && data.itemsCount <= 500 &&
+        data.subtotal is number && data.subtotal >= 0 && data.subtotal <= 1000000 &&
+        data.discount is number && data.discount >= 0 && data.discount <= 1000000 &&
+        data.shipping is number && data.shipping >= 0 && data.shipping <= 100000 &&
+        data.total is number && data.total >= 0 && data.total <= 1000000 &&
+        data.currency is string && data.currency.size() >= 7 && data.currency.size() <= 10 &&
+        (data.currency == 'cordobas' || data.currency == 'dolares') &&
+        data.status is string && data.status.size() >= 7 && data.status.size() <= 20 &&
+        (
+          data.status == 'pendiente' ||
+          data.status == 'en_preparacion' ||
+          data.status == 'enviado' ||
+          data.status == 'entregado'
+        ) &&
+        data.notes is string && data.notes.size() >= 0 && data.notes.size() <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidOrderNotification(data) {
+      return data.keys().hasAll([
+          'id', 'recipientId', 'authorId', 'orderId', 'title',
+          'message', 'type', 'read', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'recipientId', 'authorId', 'orderId', 'title',
+          'message', 'type', 'read', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.recipientId) &&
+        isValidId(data.authorId) &&
+        data.authorId == request.auth.uid &&
+        isValidId(data.orderId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 500 &&
+        data.type is string && data.type.size() >= 9 && data.type.size() <= 20 &&
+        (
+          data.type == 'nuevo_pedido' ||
+          data.type == 'cambio_estado' ||
+          data.type == 'pago_actualizado' ||
+          data.type == 'promocion'
+        ) &&
+        data.read is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection 1: /admins/{adminId}
+    // =========================================================================
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (isOwner(adminId) || isBootstrappedOwner());
+      allow list: if false;
+      allow create: if isBootstrappedOwner() &&
+        isValidId(adminId) &&
+        isValidAdminRole(incoming()) &&
+        incoming().uid == adminId &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isBootstrappedOwner() && isValidId(adminId);
+    }
+
+    // =========================================================================
+    // Collection 2: /products/{productId} (Open Free Platform Sellers + Admin)
+    // =========================================================================
+    match /products/{productId} {
+      // Public storefront catalog read access; single-doc get validates ID
+      allow get: if isValidId(productId);
+      allow list: if resource.data.price >= 0;
+
+      // Any verified user with a registered profile (or admin) can publish products for free
+      allow create: if isVerifiedUser() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().id == productId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) || isAdmin());
+
+      allow update: if isVerifiedUser() &&
+        isValidId(productId) &&
+        isValidProduct(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Seller updates their own published product
+          (
+            existing().authorId == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'price', 'originalPrice', 'category', 'condition',
+              'description', 'primaryImageUrl', 'sizesCsv', 'colorsCsv',
+              'inStock', 'featured', 'sellerName', 'sellerPhone', 'sellerCity', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Admin escape hatch
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'price', 'originalPrice', 'category', 'condition',
+              'description', 'primaryImageUrl', 'sizesCsv', 'colorsCsv',
+              'inStock', 'featured', 'sellerName', 'sellerPhone', 'sellerCity', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isVerifiedUser() &&
+        isValidId(productId) &&
+        (existing().authorId == request.auth.uid || isAdmin());
+    }
+
+    // =========================================================================
+    // Collection 2b: /business_ads/{adId} (Nicaraguan Business Ads & Free Directory)
+    // =========================================================================
+    match /business_ads/{adId} {
+      allow get: if isValidId(adId);
+      allow list: if resource.data.pricePaid >= 0;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(adId) &&
+        isValidBusinessAd(incoming()) &&
+        incoming().id == adId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) || isAdmin());
+
+      allow update: if isVerifiedUser() &&
+        isValidId(adId) &&
+        isValidBusinessAd(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Advertiser updates their own non-expired ad details
+          (
+            existing().authorId == request.auth.uid &&
+            existing().status != 'expirado' &&
+            incoming().planId == existing().planId &&
+            incoming().paymentStatus == existing().paymentStatus &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'businessName', 'ownerName', 'category', 'department', 'headline',
+              'description', 'promoText', 'imageUrl', 'whatsappPhone',
+              'websiteOrSocialUrl', 'ctaText', 'paymentReference', 'status',
+              'impressions', 'clicks', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Admin escape hatch for moderation and payment verification
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'businessName', 'ownerName', 'category', 'department', 'headline',
+              'description', 'promoText', 'imageUrl', 'whatsappPhone',
+              'websiteOrSocialUrl', 'ctaText', 'planId', 'planName', 'pricePaid',
+              'paymentStatus', 'paymentReference', 'status', 'impressions',
+              'clicks', 'expiresAtIso', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isVerifiedUser() &&
+        isValidId(adId) &&
+        (existing().authorId == request.auth.uid || isAdmin());
+    }
+
+    // =========================================================================
+    // Collection 3: /users/{userId} (Non-PII Public Profile)
+    // =========================================================================
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isOwner(userId) &&
+        isValidUserPublicProfile(incoming()) &&
+        incoming().uid == userId &&
+        incoming().loyaltyPoints == 0 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserPublicProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Owner updates profile or favorites (cannot self-inflate loyaltyPoints)
+          (
+            isOwner(userId) &&
+            incoming().loyaltyPoints == existing().loyaltyPoints &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'city', 'favoritesCsv', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Admin escape hatch
+          isAdmin()
+        );
+
+      allow delete: if isVerifiedUser() && isValidId(userId) && isAdmin();
+
+      // =======================================================================
+      // Subcollection 3a: /users/{userId}/private/{docId} (PII Isolation)
+      // =======================================================================
+      match /private/{docId} {
+        // Master Gate: Parent /users/{userId} must exist
+        allow get: if isSignedIn() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          docId == 'info' &&
+          (isOwner(userId) || isAdmin()) &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow list: if false;
+
+        allow create: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          docId == 'info' &&
+          isOwner(userId) &&
+          isValidUserPrivateInfo(incoming()) &&
+          incoming().uid == userId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow update: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(docId) &&
+          docId == 'info' &&
+          isValidUserPrivateInfo(incoming()) &&
+          incoming().uid == existing().uid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId)) && (
+            (
+              isOwner(userId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'email', 'phone', 'address', 'indriveReference', 'preferredPaymentMethod', 'updatedAt'
+              ])
+            ) ||
+            isAdmin()
+          );
+
+        allow delete: if isVerifiedUser() && isValidId(userId) && isValidId(docId) && isAdmin();
+      }
+    }
+
+    // =========================================================================
+    // Collection 4: /orders/{orderId}
+    // =========================================================================
+    match /orders/{orderId} {
+      allow get: if isSignedIn() &&
+        isValidId(orderId) &&
+        (existing().customerId == request.auth.uid || isAdmin());
+
+      // Pillar 8: Secure List Queries (No get/exists in list)
+      allow list: if isSignedIn() &&
+        (resource.data.customerId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedUser() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().id == orderId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status == 'pendiente' &&
+        (incoming().paymentStatus == 'pendiente' || incoming().paymentStatus == 'verificando') &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+
+      allow update: if isVerifiedUser() &&
+        isValidId(orderId) &&
+        isValidOrder(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().customerId == existing().customerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Customer attaches electronic payment reference while order is not delivered
+          (
+            existing().customerId == request.auth.uid &&
+            existing().status != 'entregado' &&
+            incoming().paymentStatus == 'verificando' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'paymentReference', 'paymentStatus', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Admin updates order fulfillment status or payment verification
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'paymentStatus', 'paymentReference', 'notes', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isVerifiedUser() && isValidId(orderId) && isAdmin();
+    }
+
+    // =========================================================================
+    // Collection 5: /notifications/{notificationId}
+    // =========================================================================
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() &&
+        isValidId(notificationId) &&
+        (existing().recipientId == request.auth.uid || isAdmin());
+
+      // Pillar 8: Secure List Queries (No get/exists in list)
+      allow list: if isSignedIn() &&
+        (resource.data.recipientId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedUser() &&
+        isValidId(notificationId) &&
+        isValidOrderNotification(incoming()) &&
+        incoming().id == notificationId &&
+        incoming().read == false &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/orders/$(incoming().orderId)) && (
+          // Customer creating an ADMIN notification for their own order
+          (
+            incoming().recipientId == 'ADMIN' &&
+            get(/databases/$(database)/documents/orders/$(incoming().orderId)).data.customerId == request.auth.uid
+          ) ||
+          // Customer creating a confirmation notification for themselves on their own order
+          (
+            incoming().recipientId == request.auth.uid &&
+            get(/databases/$(database)/documents/orders/$(incoming().orderId)).data.customerId == request.auth.uid
+          ) ||
+          // Admin sending order status / payment notification to customer
+          isAdmin()
+        );
+
+      allow update: if isVerifiedUser() &&
+        isValidId(notificationId) &&
+        isValidOrderNotification(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().recipientId == existing().recipientId &&
+        incoming().authorId == existing().authorId &&
+        incoming().orderId == existing().orderId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Recipient marks notification as read
+          (
+            existing().recipientId == request.auth.uid &&
+            incoming().read == true &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt'])
+          ) ||
+          // Action 2: Admin marks notification as read
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isVerifiedUser() && isValidId(notificationId) && isAdmin();
+    }
+  }
+}

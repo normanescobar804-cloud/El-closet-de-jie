@@ -1,0 +1,6 @@
+{
+  "name": "El closet de jie",
+  "description": "Tienda de ropa usada y nueva con entregas Delivery, inDrive, pedidos por WhatsApp, pagos por transferencia LAFISE y administración de fotos desde la galería del celular.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,159 @@
+import React from 'react';
+import { Home, ShoppingBag, User, Bell, Store, MessageCircle } from 'lucide-react';
+import { CurrencyType, StoreSettings, UserAccount } from '../types';
+import { formatCurrency } from '../utils/storage';
+
+interface MobileNavProps {
+  activeTab: 'catalog' | 'favorites' | 'cart' | 'admin';
+  cartCount: number;
+  cartTotal: number;
+  currency: CurrencyType;
+  storeSettings: StoreSettings;
+  favoritesCount: number;
+  unreadNotificationsCount?: number;
+  unreadChatCount?: number;
+  currentUser: UserAccount | null;
+  onOpenCatalog: () => void;
+  onOpenFavorites: () => void;
+  onOpenFreeSellerPortal?: () => void;
+  onOpenNotifications?: () => void;
+  onOpenChat?: () => void;
+  onOpenOrders?: () => void;
+  onOpenCart: () => void;
+  onOpenAuth: () => void;
+}
+
+export const MobileNav: React.FC<MobileNavProps> = ({
+  activeTab,
+  cartCount,
+  cartTotal,
+  currency,
+  storeSettings,
+  unreadNotificationsCount = 0,
+  currentUser,
+  onOpenCatalog,
+  onOpenOrders,
+  onOpenCart,
+  onOpenAuth,
+}) => {
+  return (
+    <>
+      {/* Floating Cart Bar when items are in cart (Mobile only) */}
+      {cartCount > 0 && activeTab !== 'cart' && (
+        <div className="md:hidden fixed bottom-18 left-3 right-3 z-40 animate-slide-up">
+          <button
+            onClick={onOpenCart}
+            className="w-full bg-gradient-to-r from-violet-700 via-purple-700 to-indigo-800 text-white p-3 rounded-2xl shadow-xl flex items-center justify-between border border-violet-500/30 active:scale-98 transition-all"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-mono font-bold text-xs tabular-nums">
+                {cartCount}
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-black">Ver mi Carrito</div>
+                <div className="text-[10px] text-violet-200">
+                  {cartCount} producto{cartCount !== 1 ? 's' : ''} · Pagos Electrónicos o Efectivo
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-black bg-white/15 px-2.5 py-1 rounded-lg tabular-nums">
+                {formatCurrency(cartTotal, currency, storeSettings.exchangeRate)}
+              </span>
+              <span className="text-xs font-bold text-amber-300">Pagar →</span>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* Bottom Navigation Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-stone-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-safe gpu-layer">
+        <nav className="grid grid-cols-5 h-16 max-w-md mx-auto px-1 items-center">
+          {/* 1. 🏠 Inicio */}
+          <button
+            id="mobile-nav-home"
+            onClick={onOpenCatalog}
+            className={`flex flex-col items-center justify-center gap-0.5 h-full touch-press ${
+              activeTab === 'catalog' ? 'text-violet-700 font-bold' : 'text-stone-600'
+            } active:scale-95 transition-all`}
+            title="Inicio"
+          >
+            <Home className="w-5 h-5" />
+            <span className="text-[10px] tracking-tight whitespace-nowrap">Inicio</span>
+          </button>
+
+          {/* 2. 🛍️ Catálogo */}
+          <button
+            id="mobile-nav-catalog"
+            onClick={() => {
+              const el = document.getElementById('catalogo-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+              else onOpenCatalog();
+            }}
+            className="flex flex-col items-center justify-center gap-0.5 h-full text-stone-600 active:scale-95 transition-all"
+            title="Catálogo de Ropa y Peluches"
+          >
+            <Store className="w-5 h-5 text-violet-600" />
+            <span className="text-[10px] tracking-tight whitespace-nowrap font-medium">Catálogo</span>
+          </button>
+
+          {/* 3. 🛒 Carrito de Compras (Central destacado) */}
+          <button
+            id="mobile-nav-cart"
+            onClick={onOpenCart}
+            className="relative flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-all -top-1.5"
+            title="Carrito de compras"
+          >
+            <div className="relative w-12 h-12 bg-gradient-to-tr from-violet-600 to-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+              <ShoppingBag className="w-5 h-5 text-amber-200" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-mono font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-xs tabular-nums">
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-bold text-stone-900 tracking-tight whitespace-nowrap">
+              Carrito
+            </span>
+          </button>
+
+          {/* 4. 📦 Mis pedidos */}
+          <button
+            id="mobile-nav-orders"
+            onClick={onOpenOrders || onOpenAuth}
+            className="flex flex-col items-center justify-center gap-0.5 h-full text-stone-600 active:scale-95 transition-all"
+            title="Mis Pedidos y entregas"
+          >
+            <div className="relative">
+              <span className="text-lg">📦</span>
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-2 bg-amber-500 text-stone-950 text-[9px] font-mono font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs tabular-nums">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] tracking-tight font-medium whitespace-nowrap">
+              Pedidos
+            </span>
+          </button>
+
+          {/* 5. 👤 Cuenta de Cliente */}
+          <button
+            id="mobile-nav-user"
+            onClick={onOpenAuth}
+            className="flex flex-col items-center justify-center gap-0.5 h-full text-stone-600 active:scale-95 transition-all"
+            title="Cuenta de cliente y acceso administrativo"
+          >
+            <div className="relative">
+              <User className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] tracking-tight font-medium whitespace-nowrap">
+              {currentUser?.isLoggedIn ? 'Mi Cuenta' : 'Cuenta'}
+            </span>
+          </button>
+        </nav>
+      </div>
+    </>
+  );
+};

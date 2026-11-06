@@ -1,0 +1,73 @@
+{
+  "id": "com.elclosetdejie.twa",
+  "name": "El closet de jie - Ropa Usada y Nueva",
+  "short_name": "El Clóset Jié",
+  "description": "Tienda de ropa usada y nueva en Nicaragua con catálogo en tiempo real, entregas inDrive, delivery nacional y pedidos por WhatsApp.",
+  "theme_color": "#4C1D95",
+  "background_color": "#FAF8F5",
+  "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay"],
+  "orientation": "portrait",
+  "start_url": "/",
+  "scope": "/",
+  "lang": "es-NI",
+  "dir": "ltr",
+  "categories": ["shopping", "lifestyle", "business"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/portada.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Catálogo de Prendas Nuevas y Usadas en Nicaragua"
+    },
+    {
+      "src": "/portada.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "El Clóset de Jié en tu Celular"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ver Catálogo",
+      "short_name": "Catálogo",
+      "url": "/#catalogo-section",
+      "description": "Explora vestidos, jeans, blusas y calzado"
+    },
+    {
+      "name": "Mi Carrito",
+      "short_name": "Carrito",
+      "url": "/#carrito",
+      "description": "Revisa tus prendas seleccionadas"
+    },
+    {
+      "name": "Chat de Clientes",
+      "short_name": "Chat",
+      "url": "/#chat",
+      "description": "Mensajes y notas de audio entre clientes"
+    }
+  ]
+}
