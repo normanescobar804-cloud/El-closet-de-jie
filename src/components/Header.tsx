@@ -57,7 +57,6 @@ interface HeaderProps {
   onOpenAnalytics?: () => void;
   todayViews?: number;
   onOpenContact?: () => void;
-  onOpenExportGitHub?: () => void;
   onLogout: () => void;
   isCloudConnected?: boolean;
 }
@@ -95,7 +94,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdmin,
   onOpenAnalytics,
   todayViews,
-  onOpenExportGitHub,
   onLogout,
   isCloudConnected = true,
 }) => {
@@ -406,20 +404,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <ShieldCheck className="w-5 h-5" />
             </button>
-
-            {/* URL Oficial de la App & Publicar */}
-            {onOpenExportGitHub && (
-              <button
-                id="btn-open-github-export-header"
-                onClick={onOpenExportGitHub}
-                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-violet-900 via-indigo-900 to-purple-900 hover:from-violet-800 hover:to-indigo-800 text-white rounded-full text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0 border border-violet-700/50"
-                title="Ver URL oficial de la app y publicar en Google Play Store o Web"
-              >
-                <Globe className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                <span className="hidden sm:inline">URL de la App</span>
-                <span className="sm:hidden text-[11px]">URL</span>
-              </button>
-            )}
           </div>
         </div>
 

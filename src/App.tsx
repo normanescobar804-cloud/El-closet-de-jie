@@ -111,7 +111,7 @@ import { QuickAuthModal } from './components/QuickAuthModal';
 import { FavoritesDrawer } from './components/FavoritesDrawer';
 import { AdminModal } from './components/AdminModal';
 import { ContactModal } from './components/ContactModal';
-import { GitHubExportModal } from './components/GitHubExportModal';
+import { AppLoginGate } from './components/AppLoginGate';
 import { AnalyticsModal } from './components/AnalyticsModal';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { GoogleAdSenseSlot } from './components/GoogleAdSenseSlot';
@@ -165,8 +165,7 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isAdvertiseModalOpen, setIsAdvertiseModalOpen] = useState(false);
-  const [isGitHubExportOpen, setIsGitHubExportOpen] = useState(false);
-  const [exportInitialTab, setExportInitialTab] = useState<'playstore' | 'web' | 'github'>('playstore');
+  const [isGuestMode, setIsGuestMode] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [contactProduct, setContactProduct] = useState<Product | null>(null);
@@ -544,7 +543,9 @@ export default function App() {
   };
 
   const handleLoginUser = async (user: UserAccount) => {
+    saveUser(user);
     setCurrentUser(user);
+    setIsGuestMode(false);
     if (auth.currentUser) {
       try {
         const cloudAcc = await ensureCustomerAccountInFirestore(auth.currentUser, user, favorites);
@@ -560,7 +561,9 @@ export default function App() {
     try {
       const cloudUser = await signInCustomerWithGoogle();
       if (cloudUser) {
+        saveUser(cloudUser);
         setCurrentUser(cloudUser);
+        setIsGuestMode(false);
         addToast('info', `¡Hola ${cloudUser.name}!`, 'Cuenta sincronizada con la base de datos en la nube');
       }
     } catch (err: any) {
@@ -581,7 +584,9 @@ export default function App() {
     } catch (e) {
       console.warn(e);
     }
+    saveUser(null);
     setCurrentUser(null);
+    setIsGuestMode(false);
     addToast('info', 'Sesión cerrada');
   };
 
@@ -895,6 +900,15 @@ export default function App() {
       {/* 0. PWA Luxury Boutique Splash Screen */}
       <SplashScreen />
 
+      {/* 0b. Login Gate: Acceso Seguro con Correo y Contraseña */}
+      {(!currentUser || !currentUser.isLoggedIn) && !isGuestMode && (
+        <AppLoginGate
+          onLoginSuccess={handleLoginUser}
+          onGoogleLogin={handleGoogleLogin}
+          onExploreAsGuest={() => setIsGuestMode(true)}
+        />
+      )}
+
       {/* 1. Header with Search, Free Seller Hub, Notifications, Customer Account, Cart & Currency Switcher */}
       <Header
         storeSettings={storeSettings}
@@ -948,8 +962,12 @@ export default function App() {
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenChat={() => handleOpenChat()}
         onOpenAuth={() => {
-          setAuthInitialTab('orders');
-          setIsAuthOpen(true);
+          if (!currentUser || !currentUser.isLoggedIn) {
+            setIsGuestMode(false);
+          } else {
+            setAuthInitialTab('profile');
+            setIsAuthOpen(true);
+          }
         }}
         onOpenFreeSellerPortal={() => setIsFreeSellerPortalOpen(true)}
         onOpenEditStore={() => setIsEditStoreModalOpen(true)}
@@ -958,7 +976,6 @@ export default function App() {
         onOpenAnalytics={() => setIsAnalyticsModalOpen(true)}
         todayViews={analyticsData.todayViews}
         onOpenContact={() => handleOpenContact()}
-        onOpenExportGitHub={() => setIsGitHubExportOpen(true)}
         onLogout={handleLogoutUser}
       />
 
@@ -1820,42 +1837,6 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                  id="btn-footer-app-url"
-                  onClick={() => {
-                    setExportInitialTab('playstore');
-                    setIsGitHubExportOpen(true);
-                  }}
-                  className="text-xs text-amber-300 hover:text-amber-200 flex items-center gap-1.5 cursor-pointer font-bold"
-                >
-                  <Globe className="w-3.5 h-3.5 text-amber-300" />
-                  <span>🌐 Ver URL Oficial de la App</span>
-                </button>
-                <button
-                  type="button"
-                  id="btn-footer-netlify"
-                  onClick={() => {
-                    setExportInitialTab('web');
-                    setIsGitHubExportOpen(true);
-                  }}
-                  className="text-xs text-teal-300 hover:text-teal-200 flex items-center gap-1.5 cursor-pointer font-bold"
-                >
-                  <UploadCloud className="w-3.5 h-3.5 text-teal-300" />
-                  <span>⚡ Subir a Netlify Drop (1 Clic)</span>
-                </button>
-                <button
-                  type="button"
-                  id="btn-footer-play-store"
-                  onClick={() => {
-                    setExportInitialTab('playstore');
-                    setIsGitHubExportOpen(true);
-                  }}
-                  className="text-xs text-stone-300 hover:text-white flex items-center gap-1.5 cursor-pointer font-semibold"
-                >
-                  <Rocket className="w-3.5 h-3.5 text-amber-300" />
-                  <span>🚀 Publicar en Google Play Store & Web</span>
-                </button>
-                <button
-                  type="button"
                   onClick={() => setIsAdminOpen(true)}
                   className="text-xs text-stone-400 hover:text-white flex items-center gap-1.5 cursor-pointer font-medium"
                 >
@@ -1937,8 +1918,12 @@ export default function App() {
         onOpenChat={() => handleOpenChat()}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenAuth={() => {
-          setAuthInitialTab('profile');
-          setIsAuthOpen(true);
+          if (!currentUser || !currentUser.isLoggedIn) {
+            setIsGuestMode(false);
+          } else {
+            setAuthInitialTab('profile');
+            setIsAuthOpen(true);
+          }
         }}
       />
 
@@ -2170,15 +2155,7 @@ export default function App() {
         }}
       />
 
-      {/* 19. GitHub & Google Play Store Publishing Modal */}
-      <GitHubExportModal
-        isOpen={isGitHubExportOpen}
-        onClose={() => setIsGitHubExportOpen(false)}
-        onOpenPrivacyPolicy={() => setIsPrivacyOpen(true)}
-        initialTab={exportInitialTab}
-      />
-
-      {/* 19b. Privacy Policy & Terms Modal (Google Play Store Compliance) */}
+      {/* 19. Privacy Policy & Terms Modal (Google Play Store Compliance) */}
       <PrivacyPolicyModal
         isOpen={isPrivacyOpen}
         onClose={() => setIsPrivacyOpen(false)}
