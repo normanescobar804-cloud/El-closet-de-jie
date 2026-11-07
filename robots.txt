@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Allow: /portada.jpg
+Allow: /icon.svg
+
+Sitemap: https://elclosetdejie.com/sitemap.xml
