@@ -525,7 +525,11 @@ export const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-stone-500 flex items-center gap-2 mt-0.5 flex-wrap">
-                    <span>{currentUser.phoneOrEmail}</span>
+                    <span>
+                      {currentUser.phoneOrEmail?.includes('@')
+                        ? currentUser.phone || 'Cliente Verificado'
+                        : currentUser.phoneOrEmail}
+                    </span>
                     {currentUser.city && (
                       <>
                         <span>·</span>
@@ -898,8 +902,10 @@ export const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
                         <span className="font-semibold text-stone-900">{currentUser.name}</span>
                       </div>
                       <div className="flex justify-between py-1.5">
-                        <span className="text-stone-500">WhatsApp / Correo:</span>
-                        <span className="font-semibold text-stone-900">{currentUser.phoneOrEmail}</span>
+                        <span className="text-stone-500">Contacto / Teléfono:</span>
+                        <span className="font-semibold text-stone-900">
+                          {currentUser.phone || (currentUser.phoneOrEmail?.includes('@') ? 'Verificado' : currentUser.phoneOrEmail)}
+                        </span>
                       </div>
                       <div className="flex justify-between py-1.5">
                         <span className="text-stone-500">Ciudad:</span>

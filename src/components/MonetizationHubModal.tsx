@@ -83,7 +83,7 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
 
   // PayPal Withdrawal State
   const defaultPaypalEmail =
-    storeSettings.platformOwnerPaypalEmail || PLATFORM_OWNER_CONFIG.paypalEmail || 'normanescobar804@gmail.com';
+    storeSettings.platformOwnerPaypalEmail || PLATFORM_OWNER_CONFIG.paypalEmail || '';
   const [paypalEmailInput, setPaypalEmailInput] = useState<string>(defaultPaypalEmail);
   const [withdrawAmountInput, setWithdrawAmountInput] = useState<number>(350);
   const [isProcessingWithdrawal, setIsProcessingWithdrawal] = useState(false);
@@ -793,7 +793,7 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
                       type="email"
                       value={paypalEmailInput}
                       onChange={(e) => setPaypalEmailInput(e.target.value)}
-                      placeholder="normanescobar804@gmail.com"
+                      placeholder="cuenta-paypal@ejemplo.com"
                       className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-sky-500 font-mono"
                     />
                     <span className="text-[10px] text-stone-500 mt-1 block">

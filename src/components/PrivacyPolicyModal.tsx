@@ -120,7 +120,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
                 <Mail className="w-4 h-4 text-violet-600 shrink-0" />
-                <span className="truncate">normanescobar804@gmail.com</span>
+                <span className="truncate">Soporte y Atención al Cliente</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
                 <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />

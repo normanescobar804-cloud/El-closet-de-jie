@@ -162,7 +162,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   // Back-End Login Gate Authentication states
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone' | 'pin'>('email');
-  const [emailInput, setEmailInput] = useState('normanescobar804@gmail.com');
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [phoneInput, setPhoneInput] = useState(storeSettings.whatsappNumber || '58898311');
@@ -1001,7 +1001,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       type="email"
                       value={emailInput}
                       onChange={(e) => setEmailInput(e.target.value)}
-                      placeholder="admin@correo.com"
+                      placeholder="Correo de administrador"
                       required
                       className="w-full pl-10 pr-3.5 py-3 rounded-xl border border-stone-300 focus:outline-none focus:border-violet-600 focus:ring-2 focus:ring-violet-200 text-xs sm:text-sm text-stone-900 bg-white"
                     />
@@ -2053,9 +2053,6 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                             <div>
                               <span className="text-stone-400 block text-[10px] uppercase font-bold">Cliente</span>
                               <span className="font-semibold text-stone-900">{ord.customerName}</span>
-                              {ord.customerEmail && (
-                                <span className="block text-[10px] text-stone-500">{ord.customerEmail}</span>
-                              )}
                             </div>
                             <div>
                               <span className="text-stone-400 block text-[10px] uppercase font-bold">Teléfono / WhatsApp</span>
@@ -2171,7 +2168,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                   )}
                                 </div>
                                 <p className="text-[11px] text-stone-500">
-                                  {cust.email || 'Cliente verificado por WhatsApp'}
+                                  {cust.city ? `Ubicación: ${cust.city}` : 'Cliente verificado'}
                                 </p>
                               </div>
                             </div>
@@ -3219,7 +3216,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                           Cuentas Oficiales del Dueño de la App
                         </h3>
                         <p className="text-xs text-emerald-200">
-                          Aquí se reciben las comisiones del 2%, publicidad, suscripciones Pro y retiros a PayPal ({storeSettings.platformOwnerPaypalEmail || 'normanescobar804@gmail.com'}).
+                          Aquí se reciben las comisiones del 2%, publicidad, suscripciones Pro y transferencias oficiales.
                         </p>
                       </div>
                     </div>

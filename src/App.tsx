@@ -165,7 +165,6 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
   const [isAdvertiseModalOpen, setIsAdvertiseModalOpen] = useState(false);
-  const [isGuestMode, setIsGuestMode] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [contactProduct, setContactProduct] = useState<Product | null>(null);
@@ -545,7 +544,6 @@ export default function App() {
   const handleLoginUser = async (user: UserAccount) => {
     saveUser(user);
     setCurrentUser(user);
-    setIsGuestMode(false);
     if (auth.currentUser) {
       try {
         const cloudAcc = await ensureCustomerAccountInFirestore(auth.currentUser, user, favorites);
@@ -563,7 +561,6 @@ export default function App() {
       if (cloudUser) {
         saveUser(cloudUser);
         setCurrentUser(cloudUser);
-        setIsGuestMode(false);
         addToast('info', `¡Hola ${cloudUser.name}!`, 'Cuenta sincronizada con la base de datos en la nube');
       }
     } catch (err: any) {
@@ -586,7 +583,6 @@ export default function App() {
     }
     saveUser(null);
     setCurrentUser(null);
-    setIsGuestMode(false);
     addToast('info', 'Sesión cerrada');
   };
 
@@ -900,12 +896,11 @@ export default function App() {
       {/* 0. PWA Luxury Boutique Splash Screen */}
       <SplashScreen />
 
-      {/* 0b. Login Gate: Acceso Seguro con Correo y Contraseña */}
-      {(!currentUser || !currentUser.isLoggedIn) && !isGuestMode && (
+      {/* 0b. Login Gate: Acceso Exclusivo por Inicio de Sesión */}
+      {(!currentUser || !currentUser.isLoggedIn) && (
         <AppLoginGate
           onLoginSuccess={handleLoginUser}
           onGoogleLogin={handleGoogleLogin}
-          onExploreAsGuest={() => setIsGuestMode(true)}
         />
       )}
 
@@ -962,12 +957,8 @@ export default function App() {
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenChat={() => handleOpenChat()}
         onOpenAuth={() => {
-          if (!currentUser || !currentUser.isLoggedIn) {
-            setIsGuestMode(false);
-          } else {
-            setAuthInitialTab('profile');
-            setIsAuthOpen(true);
-          }
+          setAuthInitialTab('profile');
+          setIsAuthOpen(true);
         }}
         onOpenFreeSellerPortal={() => setIsFreeSellerPortalOpen(true)}
         onOpenEditStore={() => setIsEditStoreModalOpen(true)}
@@ -1918,12 +1909,8 @@ export default function App() {
         onOpenChat={() => handleOpenChat()}
         onOpenCart={() => setIsCartOpen(true)}
         onOpenAuth={() => {
-          if (!currentUser || !currentUser.isLoggedIn) {
-            setIsGuestMode(false);
-          } else {
-            setAuthInitialTab('profile');
-            setIsAuthOpen(true);
-          }
+          setAuthInitialTab('profile');
+          setIsAuthOpen(true);
         }}
       />
 

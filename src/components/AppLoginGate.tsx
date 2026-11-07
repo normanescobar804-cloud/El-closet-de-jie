@@ -23,13 +23,11 @@ import { registerCustomerAccount, loginCustomerAccount } from '../utils/storage'
 interface AppLoginGateProps {
   onLoginSuccess: (user: UserAccount) => void;
   onGoogleLogin?: () => Promise<void>;
-  onExploreAsGuest?: () => void;
 }
 
 export const AppLoginGate: React.FC<AppLoginGateProps> = ({
   onLoginSuccess,
-  onGoogleLogin,
-  onExploreAsGuest
+  onGoogleLogin
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [identifier, setIdentifier] = useState('');
@@ -112,7 +110,7 @@ export const AppLoginGate: React.FC<AppLoginGateProps> = ({
     }
 
     if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      setErrorMessage('Por favor introduce un correo electrónico válido (ej: usuario@gmail.com).');
+      setErrorMessage('Por favor introduce un correo electrónico válido con formato correcto.');
       return;
     }
 
@@ -277,7 +275,7 @@ export const AppLoginGate: React.FC<AppLoginGateProps> = ({
                       type="text"
                       id="input-login-identifier"
                       required
-                      placeholder="ej: cliente@gmail.com o 8888-8888"
+                      placeholder="Tu correo o WhatsApp (ej: 8888-8888)"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-xl text-xs sm:text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-200/50"
@@ -354,7 +352,7 @@ export const AppLoginGate: React.FC<AppLoginGateProps> = ({
                         type="email"
                         id="input-reg-email"
                         required
-                        placeholder="tu@correo.com"
+                        placeholder="ejemplo de correo"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full pl-10 pr-3 py-2 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-violet-500"
@@ -522,19 +520,6 @@ export const AppLoginGate: React.FC<AppLoginGateProps> = ({
               </div>
             )}
 
-            {/* Optional Guest Explorer */}
-            {onExploreAsGuest && (
-              <div className="pt-2 text-center border-t border-stone-100 dark:border-stone-800">
-                <button
-                  type="button"
-                  id="btn-guest-explore-gate"
-                  onClick={onExploreAsGuest}
-                  className="text-xs text-stone-500 hover:text-violet-600 dark:hover:text-violet-400 font-semibold cursor-pointer py-1"
-                >
-                  Explorar catálogo como invitado →
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
