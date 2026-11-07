@@ -97,6 +97,7 @@ import {
   subscribeToUserNotifications,
   subscribeToAllUsers,
   seedInitialCatalogToCloud,
+  syncFavoritesToCloud,
   ADMIN_OWNER_EMAIL
 } from './firebase';
 import { PRODUCT_CATEGORIES } from './data/initialProducts';
@@ -128,6 +129,7 @@ import { TestimonialCarousel } from './components/TestimonialCarousel';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PrivacyPolicyModal } from './components/PrivacyPolicyModal';
+import { SplashScreen } from './components/SplashScreen';
 import { getUnreadChatCount } from './utils/chatStorage';
 
 type PriceRangeType = 'all' | '10-50' | '50-100' | '100-200' | '200-500' | '500+';
@@ -344,6 +346,10 @@ export default function App() {
           setCurrentUser(syncedAccount);
           setIsCloudConnected(true);
 
+          if (syncedAccount.favorites && syncedAccount.favorites.length > 0) {
+            setFavorites((prev) => Array.from(new Set([...prev, ...(syncedAccount.favorites || [])])));
+          }
+
           const isOwnerAdmin = Boolean(
             fbUser.emailVerified &&
               fbUser.email?.toLowerCase() === ADMIN_OWNER_EMAIL.toLowerCase()
@@ -494,18 +500,28 @@ export default function App() {
   // --- 🔒 Favorites & Customer Account Actions ---
   const handleToggleFavorite = (product: Product) => {
     const isFav = favorites.includes(product.id);
+    let updatedFavorites: string[];
     if (isFav) {
-      setFavorites((prev) => prev.filter((id) => id !== product.id));
+      updatedFavorites = favorites.filter((id) => id !== product.id);
+      setFavorites(updatedFavorites);
       addToast('favorite', 'Prenda retirada de tus favoritos', product.name);
     } else {
-      setFavorites((prev) => [...prev, product.id]);
+      updatedFavorites = [...favorites, product.id];
+      setFavorites(updatedFavorites);
       addToast('favorite', '¡Guardado en tus favoritos!', product.name);
+    }
+    if (auth.currentUser) {
+      syncFavoritesToCloud(updatedFavorites).catch(() => {});
     }
   };
 
   const handleRemoveFavoriteById = (productId: string) => {
-    setFavorites((prev) => prev.filter((id) => id !== productId));
+    const updatedFavorites = favorites.filter((id) => id !== productId);
+    setFavorites(updatedFavorites);
     addToast('favorite', 'Prenda retirada de tus favoritos');
+    if (auth.currentUser) {
+      syncFavoritesToCloud(updatedFavorites).catch(() => {});
+    }
   };
 
   const handleClearRecentlyViewed = () => {
@@ -876,6 +892,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-stone-800 pb-24 md:pb-0">
+      {/* 0. PWA Luxury Boutique Splash Screen */}
+      <SplashScreen />
+
       {/* 1. Header with Search, Free Seller Hub, Notifications, Customer Account, Cart & Currency Switcher */}
       <Header
         storeSettings={storeSettings}

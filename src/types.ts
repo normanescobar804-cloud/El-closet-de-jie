@@ -256,6 +256,7 @@ export interface UserAccount {
   storePlanExpiresAt?: number;
   preferredPaymentMethod?: PaymentMethodType;
   loyaltyPoints?: number;
+  favorites?: string[];
   authProvider?: string;
   role?: 'customer' | 'seller' | 'admin';
   isLoggedIn: boolean;

@@ -96,7 +96,8 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: false, // Avoid stale caching loops during preview development
+          enabled: true,
+          type: 'module',
         },
       }),
     ],

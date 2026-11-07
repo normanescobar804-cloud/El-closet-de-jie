@@ -385,6 +385,7 @@ export async function ensureCustomerAccountInFirestore(
     address,
     preferredPaymentMethod: fromCloudPaymentMethod(cloudPayMethod),
     role: isAdmin ? 'admin' : 'seller',
+    favorites: favoritesCsv ? favoritesCsv.split(',').filter(Boolean) : [],
     isLoggedIn: true,
     createdAt: Date.now(),
     updatedAt: Date.now()
@@ -1038,6 +1039,20 @@ export async function seedInitialCatalogToCloud(productsToSeed: Product[]): Prom
     }
   }
   return count;
+}
+
+export async function syncFavoritesToCloud(favorites: string[]): Promise<void> {
+  if (!auth.currentUser) return;
+  const uid = sanitizeId(auth.currentUser.uid);
+  const favoritesCsv = truncateString(favorites.join(','), 2000, '');
+  try {
+    await updateDoc(doc(db, 'users', uid), {
+      favoritesCsv,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.warn('Favorites cloud sync notice:', error);
+  }
 }
 
 export { onAuthStateChanged };

@@ -2040,8 +2040,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                   className="text-xs font-bold rounded-lg border border-stone-300 px-2.5 py-1 bg-stone-900 text-white focus:outline-none cursor-pointer"
                                 >
                                   <option value="pendiente">📦 Pendiente</option>
-                                  <option value="en_preparacion">✨ En Preparación</option>
-                                  <option value="enviado">🛵 Enviado / En Ruta</option>
+                                  <option value="en_preparacion">✨ Preparando</option>
+                                  <option value="enviado">🛵 Enviado</option>
                                   <option value="entregado">🎉 Entregado</option>
                                 </select>
                               </div>
