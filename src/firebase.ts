@@ -973,20 +973,47 @@ export async function uploadProductImageToStorage(
   const cleanName = sanitizeId(preferredName || `img-${Date.now()}`);
   const storagePath = `products/${cleanName}-${Date.now()}.jpg`;
 
+  // First convert File to optimized data URL if it's a File object
+  let localDataUrl: string = '';
+  if (fileOrDataUrl instanceof File) {
+    try {
+      localDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(fileOrDataUrl);
+      });
+    } catch {
+      localDataUrl = '';
+    }
+  } else if (typeof fileOrDataUrl === 'string') {
+    localDataUrl = fileOrDataUrl;
+  }
+
   try {
     const storageRef = ref(storage, storagePath);
-    if (typeof fileOrDataUrl === 'string' && fileOrDataUrl.startsWith('data:')) {
-      const snap = await uploadString(storageRef, fileOrDataUrl, 'data_url');
+    if (localDataUrl && localDataUrl.startsWith('data:')) {
+      const snap = await Promise.race([
+        uploadString(storageRef, localDataUrl, 'data_url'),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Storage timeout')), 4000))
+      ]);
       return await getDownloadURL(snap.ref);
     } else if (fileOrDataUrl instanceof File) {
-      const snap = await uploadBytes(storageRef, fileOrDataUrl);
+      const snap = await Promise.race([
+        uploadBytes(storageRef, fileOrDataUrl),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Storage timeout')), 4000))
+      ]);
       return await getDownloadURL(snap.ref);
     }
-    return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '/portada.jpg';
   } catch (error) {
-    console.warn('Firebase Storage notice, retaining optimized cloud payload:', error);
-    return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '/portada.jpg';
+    console.info('Storage direct upload note; using optimized image data payload:', error);
   }
+
+  // Fallback to crisp high quality local image representation so gallery upload NEVER fails
+  if (localDataUrl) {
+    return localDataUrl;
+  }
+  return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '/portada.jpg';
 }
 
 // ============================================================================

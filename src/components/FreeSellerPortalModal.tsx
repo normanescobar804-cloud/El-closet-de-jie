@@ -144,18 +144,19 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
     if (!file) return;
     setIsUploading(true);
     try {
-      const storageUrl = await uploadProductImageToStorage(file, `vendedor-${name || 'prenda'}`);
+      let processed: string = '';
+      try {
+        processed = await processHighResImage(file);
+      } catch {
+        processed = '';
+      }
+      const storageUrl = await uploadProductImageToStorage(processed || file, `vendedor-${name || 'producto'}`);
       setImageUrl(storageUrl);
     } catch (err) {
-      console.error('Error uploading product photo to Firebase Storage:', err);
-      try {
-        const processed = await processHighResImage(file);
-        setImageUrl(processed);
-      } catch (fallbackErr) {
-        console.error('Fallback error:', fallbackErr);
-      }
+      console.error('Error uploading product photo from gallery:', err);
     } finally {
       setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -303,14 +304,14 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-serif text-lg sm:text-2xl font-bold text-white">
-                  Plataforma Abierta • Publica y Vende Gratis
+                  Mi Tienda Personal • Sube Cualquier Producto
                 </h2>
                 <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
-                  100% Uso Libre • 0% Comisión
+                  Tu Tienda Propia • Comunicación Directa
                 </span>
               </div>
               <p className="text-xs text-stone-300 mt-0.5">
-                Cualquier persona o emprendedor en Nicaragua puede subir sus productos gratis y recibir pedidos directo en su WhatsApp.
+                Tienes tu propia tienda: sube cualquier producto que desees vender (ropa, peluches, calzado, tecnología, hogar, etc.) y atiende a tus clientes por chat o WhatsApp.
               </p>
             </div>
           </div>

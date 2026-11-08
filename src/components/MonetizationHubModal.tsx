@@ -37,7 +37,10 @@ import {
   calculateEarningsSplit,
   PaypalWithdrawalRecord,
   getSavedPaypalWithdrawals,
-  savePaypalWithdrawal
+  savePaypalWithdrawal,
+  BankWithdrawalRecord,
+  getSavedBankWithdrawals,
+  saveBankWithdrawal
 } from '../utils/monetization';
 import { formatCurrency } from '../utils/storage';
 
@@ -63,7 +66,7 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
   onUpdateUser
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'commission' | 'paypal' | 'ads' | 'memberships' | 'boosts' | 'verification' | 'history'
+    'overview' | 'commission' | 'bank' | 'paypal' | 'ads' | 'memberships' | 'boosts' | 'verification' | 'history'
   >('overview');
 
   const [copiedWallet, setCopiedWallet] = useState(false);
@@ -72,6 +75,7 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
 
   const [earningsList, setEarningsList] = useState<PlatformEarningRecord[]>(getSavedPlatformEarnings());
   const [paypalWithdrawals, setPaypalWithdrawals] = useState<PaypalWithdrawalRecord[]>(getSavedPaypalWithdrawals());
+  const [bankWithdrawals, setBankWithdrawals] = useState<BankWithdrawalRecord[]>(getSavedBankWithdrawals());
   const [actionSuccessMessage, setActionSuccessMessage] = useState('');
 
   // Simulator State
@@ -87,6 +91,13 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
   const [paypalEmailInput, setPaypalEmailInput] = useState<string>(defaultPaypalEmail);
   const [withdrawAmountInput, setWithdrawAmountInput] = useState<number>(350);
   const [isProcessingWithdrawal, setIsProcessingWithdrawal] = useState(false);
+
+  // Bank Withdrawal State
+  const [bankNameInput, setBankNameInput] = useState<string>(storeSettings.platformOwnerBank || 'Banco LAFISE Bancentro');
+  const [bankAccountInput, setBankAccountInput] = useState<string>(storeSettings.platformOwnerAccount || '134082049');
+  const [bankHolderInput, setBankHolderInput] = useState<string>('Administración El Clóset de Jié');
+  const [bankWithdrawAmountInput, setBankWithdrawAmountInput] = useState<number>(500);
+  const [isProcessingBankWithdrawal, setIsProcessingBankWithdrawal] = useState(false);
 
   if (!isOpen) return null;
 
@@ -139,8 +150,16 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
     .filter((w) => w.status === 'completado')
     .reduce((sum, w) => sum + w.amountNIO, 0);
 
-  // Available balance for PayPal withdrawal
-  const availableWithdrawalBalanceNIO = Math.max(0, totalPlatformEarningsAll - totalPaypalWithdrawnNIO);
+  // Total withdrawn via Bank Transfer
+  const totalBankWithdrawnNIO = bankWithdrawals
+    .filter((w) => w.status === 'completado')
+    .reduce((sum, w) => sum + w.amountNIO, 0);
+
+  // Available balance for withdrawal (PayPal or Bank)
+  const availableWithdrawalBalanceNIO = Math.max(
+    0,
+    totalPlatformEarningsAll - totalPaypalWithdrawnNIO - totalBankWithdrawnNIO
+  );
 
   // Handle Plan Subscription
   const handleSubscribePlan = (planId: string, planTitle: string, priceNIO: number) => {
@@ -285,6 +304,51 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
       );
       setTimeout(() => setActionSuccessMessage(''), 5000);
     }, 800);
+  };
+
+  // Handle Bank Transfer Withdrawal Request (LAFISE, BAC, Banpro, etc.)
+  const handleRequestBankWithdrawal = () => {
+    if (bankWithdrawAmountInput <= 0) {
+      setActionSuccessMessage('Por favor ingresa un monto válido a transferir.');
+      return;
+    }
+    if (bankWithdrawAmountInput > availableWithdrawalBalanceNIO) {
+      setActionSuccessMessage(
+        `El monto solicitado (C$ ${bankWithdrawAmountInput}) supera tu saldo disponible (C$ ${availableWithdrawalBalanceNIO.toFixed(2)}).`
+      );
+      return;
+    }
+    if (!bankAccountInput.trim()) {
+      setActionSuccessMessage('Por favor ingresa el número de cuenta bancaria nacional.');
+      return;
+    }
+
+    setIsProcessingBankWithdrawal(true);
+    setTimeout(() => {
+      const exchangeRate = storeSettings.exchangeRate || 36.8;
+      const amountUSD = Number((bankWithdrawAmountInput / exchangeRate).toFixed(2));
+      const newRecord: BankWithdrawalRecord = {
+        id: `bank-wd-${Date.now()}`,
+        bankName: bankNameInput.trim() || 'Banco LAFISE Bancentro',
+        accountNumber: bankAccountInput.trim(),
+        accountHolder: bankHolderInput.trim() || 'Administración Central',
+        amountNIO: bankWithdrawAmountInput,
+        amountUSD,
+        date: 'Hoy, hace un momento',
+        status: 'completado',
+        transactionId: `ACH-TX-${Date.now().toString().slice(-7)}`,
+        sourceBreakdown: 'Comisiones 2% y Publicidad de Negocios',
+        note: `Transferencia bancaria enviada a ${bankNameInput} (${bankAccountInput})`
+      };
+
+      saveBankWithdrawal(newRecord);
+      setBankWithdrawals(getSavedBankWithdrawals());
+      setIsProcessingBankWithdrawal(false);
+      setActionSuccessMessage(
+        `¡Transferencia Bancaria completada con éxito! C$ ${bankWithdrawAmountInput} enviados a tu cuenta ${bankNameInput} (${bankAccountInput}).`
+      );
+      setTimeout(() => setActionSuccessMessage(''), 5500);
+    }, 900);
   };
 
   // Handle Quick Simulated Ad Revenue Addition
@@ -446,6 +510,16 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
           >
             <DollarSign className="w-4 h-4 text-emerald-600" />
             <span>Comisión 2% (98% Tienda)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('bank')}
+            className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'bank' ? 'border-emerald-600 text-emerald-900 bg-emerald-50/50 rounded-t-lg' : 'border-transparent text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <CreditCard className="w-4 h-4 text-emerald-600" />
+            <span>Retiro Bancario (LAFISE / ACH)</span>
           </button>
 
           <button
@@ -706,6 +780,197 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
                       Retirable a tu cuenta PayPal ({defaultPaypalEmail})
                     </span>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2.5 BANK WITHDRAWALS */}
+          {activeTab === 'bank' && (
+            <div className="space-y-6">
+              {/* Header Box */}
+              <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-950 via-teal-900 to-stone-900 text-white space-y-3 shadow-xl border border-emerald-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center justify-center font-bold text-xl">
+                    🏦
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg font-bold">Retiros a Cuenta Bancaria Nacional (Nicaragua)</h3>
+                    <p className="text-xs text-emerald-200">
+                      Retira tus comisiones de la app directamente a tu cuenta bancaria (LAFISE, BAC, Banpro, etc.) vía transferencia ACH inmediata.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-white/10">
+                  <div className="p-3 bg-white/10 rounded-xl">
+                    <span className="text-[10px] text-emerald-300 font-bold uppercase block">
+                      Saldo Disponible para Retiro
+                    </span>
+                    <p className="font-mono text-2xl font-black text-white mt-1">
+                      C$ {availableWithdrawalBalanceNIO.toFixed(2)}
+                    </p>
+                    <span className="text-[10px] text-emerald-200">
+                      ≈ ${(availableWithdrawalBalanceNIO / (storeSettings.exchangeRate || 36.8)).toFixed(2)} USD
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-white/10 rounded-xl">
+                    <span className="text-[10px] text-emerald-300 font-bold uppercase block">
+                      Cuenta Bancaria Registrada
+                    </span>
+                    <p className="font-mono text-xs font-bold text-amber-300 mt-1 truncate">
+                      {bankNameInput} · {bankAccountInput}
+                    </p>
+                    <span className="text-[10px] text-stone-300">Titular: {bankHolderInput}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Withdrawal Request Form */}
+              <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 space-y-4">
+                <h4 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                  <ArrowDownToLine className="w-4 h-4 text-emerald-600" />
+                  <span>Solicitar Transferencia a Cuenta Bancaria</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Banco Destino:
+                    </label>
+                    <select
+                      value={bankNameInput}
+                      onChange={(e) => setBankNameInput(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Banco LAFISE Bancentro">Banco LAFISE Bancentro</option>
+                      <option value="BAC Credomatic">BAC Credomatic Nicaragua</option>
+                      <option value="Banco de la Producción (Banpro)">Banpro Promerica</option>
+                      <option value="Banco Ficohsa">Banco Ficohsa</option>
+                      <option value="Banco BDF">Banco BDF</option>
+                      <option value="Billetera Móvil Banpro / LAFISE">Billetera Móvil Nacional</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Número de Cuenta Bancaria:
+                    </label>
+                    <input
+                      type="text"
+                      value={bankAccountInput}
+                      onChange={(e) => setBankAccountInput(e.target.value)}
+                      placeholder="Ej. 134082049"
+                      className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Nombre del Titular:
+                    </label>
+                    <input
+                      type="text"
+                      value={bankHolderInput}
+                      onChange={(e) => setBankHolderInput(e.target.value)}
+                      placeholder="Nombre del dueño"
+                      className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs font-semibold text-stone-900 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Monto a Retirar en Córdobas (C$):
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max={availableWithdrawalBalanceNIO}
+                        value={bankWithdrawAmountInput}
+                        onChange={(e) => setBankWithdrawAmountInput(Number(e.target.value))}
+                        className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs font-bold text-stone-900 focus:outline-none focus:border-emerald-500 font-mono"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs font-bold text-stone-500 font-mono">
+                        ≈ ${(bankWithdrawAmountInput / (storeSettings.exchangeRate || 36.8)).toFixed(2)} USD
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1 text-[10px]">
+                      <span className="text-stone-500">Máximo: C$ {availableWithdrawalBalanceNIO.toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setBankWithdrawAmountInput(Math.floor(availableWithdrawalBalanceNIO))}
+                        className="text-emerald-700 font-bold hover:underline cursor-pointer"
+                      >
+                        Retirar todo el saldo
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col justify-end">
+                    <button
+                      type="button"
+                      onClick={handleRequestBankWithdrawal}
+                      disabled={isProcessingBankWithdrawal || availableWithdrawalBalanceNIO <= 0}
+                      className="w-full py-2.5 px-5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    >
+                      {isProcessingBankWithdrawal ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Procesando transferencia bancaria...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>Transferir a mi Cuenta Bancaria</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Withdrawal History */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-stone-700">
+                  Historial de Retiros a Cuentas Bancarias
+                </h4>
+
+                <div className="border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-stone-100 text-stone-700 font-bold uppercase text-[10px] tracking-wider border-b border-stone-200">
+                      <tr>
+                        <th className="py-2.5 px-3">Fecha</th>
+                        <th className="py-2.5 px-3">Transacción ID</th>
+                        <th className="py-2.5 px-3">Banco / Cuenta</th>
+                        <th className="py-2.5 px-3">Estado</th>
+                        <th className="py-2.5 px-3 text-right">Monto Retirado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {bankWithdrawals.map((w) => (
+                        <tr key={w.id} className="hover:bg-stone-50 transition-colors">
+                          <td className="py-2.5 px-3 text-stone-500 whitespace-nowrap">{w.date}</td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-stone-800">{w.transactionId}</td>
+                          <td className="py-2.5 px-3 text-stone-600 font-medium text-[11px]">
+                            {w.bankName} ({w.accountNumber})
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Completado</span>
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-emerald-700 text-right whitespace-nowrap">
+                            C$ {w.amountNIO} (${w.amountUSD} USD)
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

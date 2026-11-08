@@ -193,8 +193,62 @@ export interface PaypalWithdrawalRecord {
   note?: string;
 }
 
+export interface BankWithdrawalRecord {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  amountNIO: number;
+  amountUSD: number;
+  date: string;
+  status: 'completado' | 'procesando';
+  transactionId: string;
+  sourceBreakdown?: string;
+  note?: string;
+}
+
 const STORAGE_KEY_EARNINGS = 'tienda_jiet_platform_earnings_v3';
 const STORAGE_KEY_PAYPAL_WITHDRAWALS = 'tienda_jiet_paypal_withdrawals_v1';
+const STORAGE_KEY_BANK_WITHDRAWALS = 'tienda_jiet_bank_withdrawals_v1';
+
+export const INITIAL_BANK_WITHDRAWALS: BankWithdrawalRecord[] = [
+  {
+    id: 'bank-wd-1',
+    bankName: 'Banco LAFISE Bancentro',
+    accountNumber: '134082049',
+    accountHolder: 'Administración El Clóset de Jié',
+    amountNIO: 1250,
+    amountUSD: 34.25,
+    date: 'Hace 3 días',
+    status: 'completado',
+    transactionId: 'LAFISE-TRANS-892102',
+    sourceBreakdown: 'Comisiones de ventas y planes Pro',
+    note: 'Transferencia ACH nacional procesada con éxito'
+  }
+];
+
+export function getSavedBankWithdrawals(): BankWithdrawalRecord[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_BANK_WITHDRAWALS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_BANK_WITHDRAWALS, JSON.stringify(INITIAL_BANK_WITHDRAWALS));
+      return INITIAL_BANK_WITHDRAWALS;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_BANK_WITHDRAWALS;
+  }
+}
+
+export function saveBankWithdrawal(record: BankWithdrawalRecord): void {
+  try {
+    const list = getSavedBankWithdrawals();
+    const updated = [record, ...list];
+    localStorage.setItem(STORAGE_KEY_BANK_WITHDRAWALS, JSON.stringify(updated));
+  } catch (err) {
+    console.error('Error saving bank withdrawal:', err);
+  }
+}
 
 export const INITIAL_PLATFORM_EARNINGS: PlatformEarningRecord[] = [
   {

@@ -56,8 +56,15 @@ export const PRODUCT_CATEGORIES: CategoryFilter[] = [
   'Vestidos y Faldas',
   'Chaquetas y Abrigos',
   'Ropa para Niños',
+  'Calzado y Zapatos',
   'Bolsas y Accesorios',
-  'Deportiva y Playa'
+  'Perfumes y Belleza',
+  'Celulares y Tecnología',
+  'Joyería y Relojes',
+  'Hogar y Decoración',
+  'Artesanías y Recuerdos',
+  'Deportiva y Playa',
+  'Otros Productos'
 ];
 
 export const INITIAL_PRODUCTS: Product[] = [

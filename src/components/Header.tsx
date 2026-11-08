@@ -59,6 +59,8 @@ interface HeaderProps {
   onOpenContact?: () => void;
   onLogout: () => void;
   isCloudConnected?: boolean;
+  visitDuration?: string;
+  isOwnerCreator?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -96,6 +98,8 @@ export const Header: React.FC<HeaderProps> = ({
   todayViews,
   onLogout,
   isCloudConnected = true,
+  visitDuration = '1m',
+  isOwnerCreator = false,
 }) => {
   const isCordobas = currency === 'NIO' || currency === 'cordobas';
 
@@ -187,42 +191,29 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action Buttons & Currency Selector */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {/* Free Seller Portal Button (+ Vender Gratis) - Desktop only (Mobile uses bottom nav + hero) */}
-            {onOpenFreeSellerPortal && (
+            {/* User's Personal Store Button: Mi Tienda */}
+            {(onOpenFreeSellerPortal || onOpenEditStore) && (
               <button
-                id="btn-open-free-seller-header"
-                onClick={onOpenFreeSellerPortal}
-                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full text-xs font-black transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                title="Publicar y vender tus productos gratis en la plataforma"
+                id="btn-open-my-store-header"
+                onClick={onOpenFreeSellerPortal || onOpenEditStore}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-full text-xs font-black transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                title="Abrir Mi Tienda: Sube tus productos, fotos y gestiona tus ventas"
               >
                 <Store className="w-3.5 h-3.5 text-amber-200" />
-                <span>+ Vender Gratis</span>
-              </button>
-            )}
-
-            {/* Edit My Store Button */}
-            {onOpenEditStore && (
-              <button
-                id="btn-open-edit-store-header"
-                onClick={onOpenEditStore}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-full text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                title="Editar los datos, WhatsApp y cuentas de tu tienda de ropa"
-              >
-                <Store className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Mi Tienda</span>
               </button>
             )}
 
-            {/* Platform Monetization & Owner Earnings (2%) */}
-            {onOpenMonetization && (
+            {/* Exclusive Creator-only App Earnings (Comisiones 2% y Retiros Banco / PayPal) */}
+            {isOwnerCreator && onOpenMonetization && (
               <button
                 id="btn-open-monetization-header"
                 onClick={onOpenMonetization}
-                className="hidden xl:inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                title="Ver comisiones del 2% y modelo de monetización de la plataforma"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 rounded-full text-xs font-black transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                title="Panel Exclusivo del Creador: Ganancias en Tiempo Real y Retiros a Banco o PayPal"
               >
                 <span className="text-xs">💰</span>
-                <span>Ganancias (2%)</span>
+                <span>Ganancias Creador</span>
               </button>
             )}
 
@@ -377,19 +368,22 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </button>
 
-            {/* Estadísticas Button */}
+            {/* Estadísticas & Real-Time Visit Time Button */}
             {onOpenAnalytics && (
               <button
                 id="btn-open-analytics-header"
                 onClick={onOpenAnalytics}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-2 sm:px-3 sm:py-2 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300/80 rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
-                title="Abrir Panel de Estadísticas"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300/80 rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                title="Abrir Panel de Estadísticas y Tiempo de Visita en Tiempo Real"
                 aria-label="Panel de estadísticas"
               >
                 <BarChart3 className="w-3.5 h-3.5 text-amber-700" />
-                <span className="hidden xl:inline font-semibold text-stone-700">Estadísticas</span>
+                <span className="hidden xl:inline font-semibold text-stone-700">Tiempo en App:</span>
+                <span className="font-mono font-black text-emerald-800 bg-emerald-100/80 px-1.5 py-0.5 rounded text-[11px] tabular-nums">
+                  ⏱️ {visitDuration}
+                </span>
                 <span className="font-mono font-black text-amber-950 tabular-nums">
-                  {todayViews ?? '0'}
+                  ({todayViews ?? '0'} visitas)
                 </span>
               </button>
             )}

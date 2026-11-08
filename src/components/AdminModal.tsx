@@ -538,28 +538,36 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     setIsEditingProduct(true);
   };
 
-  // 📸 Subida de fotos a Firebase Storage en Alta Resolución
+  // 📸 Subida de fotos desde la Galería en Alta Resolución
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploadingImage(true);
-    setImageUploadMessage('Subiendo foto(s) a Firebase Storage...');
+    setImageUploadMessage('Cargando foto(s) de la galería...');
 
     try {
       const newImagesList: string[] = [...images];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setImageUploadMessage(`Subiendo foto ${i + 1} de ${files.length} a Firebase Storage...`);
-        const storageUrl = await uploadProductImageToStorage(file, `prod-${name || 'prenda'}`);
+        setImageUploadMessage(`Cargando foto ${i + 1} de ${files.length}...`);
+        // Process crisp high-res version first to ensure instant gallery compatibility
+        let processedData: string = '';
+        try {
+          processedData = await processHighResImage(file);
+        } catch {
+          // If canvas fails, fallback to direct upload
+          processedData = '';
+        }
+        const storageUrl = await uploadProductImageToStorage(processedData || file, `prod-${name || 'producto'}`);
         newImagesList.push(storageUrl);
       }
       setImages(newImagesList);
-      setImageUploadMessage(`¡${files.length} foto(s) subida(s) con éxito a Firebase Storage!`);
+      setImageUploadMessage(`¡${files.length} foto(s) agregada(s) correctamente!`);
       setTimeout(() => setImageUploadMessage(''), 3000);
     } catch (err) {
       console.error(err);
-      setImageUploadMessage('Error al procesar la imagen. Intenta con otra foto.');
+      setImageUploadMessage('Error al procesar la imagen de la galería.');
     } finally {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

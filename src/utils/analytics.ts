@@ -251,6 +251,66 @@ export function recordWhatsAppAction(): void {
 }
 
 /**
+ * Session duration and real-time visit tracking
+ */
+const SESSION_START_KEY = 'tienda_jiet_session_start_time';
+const TOTAL_VISIT_SECONDS_KEY = 'tienda_jiet_accumulated_visit_seconds';
+
+export function initSessionTimer(): void {
+  try {
+    if (!sessionStorage.getItem(SESSION_START_KEY)) {
+      sessionStorage.setItem(SESSION_START_KEY, String(Date.now()));
+    }
+  } catch {}
+}
+
+export function getCurrentSessionDurationSeconds(): number {
+  try {
+    const start = sessionStorage.getItem(SESSION_START_KEY);
+    if (!start) return 0;
+    const diff = Math.floor((Date.now() - Number(start)) / 1000);
+    return Math.max(0, diff);
+  } catch {
+    return 0;
+  }
+}
+
+export function recordHeartbeatVisit(seconds: number = 10): number {
+  try {
+    const raw = localStorage.getItem(TOTAL_VISIT_SECONDS_KEY);
+    const prev = raw ? Number(raw) : 18400; // baseline seconds
+    const updated = prev + seconds;
+    localStorage.setItem(TOTAL_VISIT_SECONDS_KEY, String(updated));
+    return updated;
+  } catch {
+    return 18400;
+  }
+}
+
+export function getTotalAccumulatedVisitSeconds(): number {
+  try {
+    const raw = localStorage.getItem(TOTAL_VISIT_SECONDS_KEY);
+    return raw ? Number(raw) : 18400;
+  } catch {
+    return 18400;
+  }
+}
+
+export function formatVisitDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
+/**
  * Reset or recalculate metrics
  */
 export function resetAnalytics(): AnalyticsData {

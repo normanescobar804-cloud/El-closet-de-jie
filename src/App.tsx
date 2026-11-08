@@ -61,7 +61,14 @@ import {
   saveRecentlyViewed,
   clearRecentlyViewed
 } from './utils/storage';
-import { getAnalyticsData, recordPageView } from './utils/analytics';
+import {
+  getAnalyticsData,
+  recordPageView,
+  initSessionTimer,
+  getCurrentSessionDurationSeconds,
+  recordHeartbeatVisit,
+  formatVisitDuration
+} from './utils/analytics';
 import {
   getSavedNotifications,
   saveNotifications,
@@ -152,6 +159,14 @@ export default function App() {
   const [cloudUsers, setCloudUsers] = useState<UserAccount[]>([]);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(getSavedRecentlyViewed);
   const [testimonials, setTestimonials] = useState<CustomerTestimonial[]>(getSavedTestimonials);
+  const [visitSeconds, setVisitSeconds] = useState<number>(0);
+  const [visitDuration, setVisitDuration] = useState<string>('0s');
+
+  const isOwnerCreator = Boolean(
+    currentUser?.email === ADMIN_OWNER_EMAIL ||
+    currentUser?.phoneOrEmail === ADMIN_OWNER_EMAIL ||
+    currentUser?.role === 'admin'
+  );
 
   // --- Modal & Drawer Visibility States ---
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -402,10 +417,22 @@ export default function App() {
     };
   }, []);
 
-  // --- 📊 Traffic & Visit Analytics Recording ---
+  // --- 📊 Traffic & Visit Analytics & Real-Time Duration Recording ---
   useEffect(() => {
+    initSessionTimer();
     const updated = recordPageView();
     setAnalyticsData(updated);
+
+    const interval = setInterval(() => {
+      const sec = getCurrentSessionDurationSeconds();
+      setVisitSeconds(sec);
+      setVisitDuration(formatVisitDuration(sec));
+      if (sec % 10 === 0 && sec > 0) {
+        recordHeartbeatVisit(10);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // --- 🔗 Deep Link: Abrir producto compartido por WhatsApp (?producto=ID o ?product=ID) ---
@@ -966,6 +993,8 @@ export default function App() {
         onOpenAdmin={() => setIsAdminOpen(true)}
         onOpenAnalytics={() => setIsAnalyticsModalOpen(true)}
         todayViews={analyticsData.todayViews}
+        visitDuration={visitDuration}
+        isOwnerCreator={isOwnerCreator}
         onOpenContact={() => handleOpenContact()}
         onLogout={handleLogoutUser}
       />
@@ -1784,14 +1813,16 @@ export default function App() {
                   <Store className="w-3.5 h-3.5 text-emerald-300" />
                   <span>⚙️ Configurar / Editar Mi Tienda</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsMonetizationHubOpen(true)}
-                  className="text-xs text-amber-300 hover:text-amber-200 flex items-center gap-1.5 cursor-pointer font-bold"
-                >
-                  <span className="text-xs">💰</span>
-                  <span>Ganancias Dueño (2%) & Retiros PayPal</span>
-                </button>
+                {isOwnerCreator && (
+                  <button
+                    type="button"
+                    onClick={() => setIsMonetizationHubOpen(true)}
+                    className="text-xs text-amber-300 hover:text-amber-200 flex items-center gap-1.5 cursor-pointer font-bold"
+                  >
+                    <span className="text-xs">💰</span>
+                    <span>Ganancias Creador (En Tiempo Real & Retiros Banco / PayPal)</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setIsFreeSellerPortalOpen(true)}

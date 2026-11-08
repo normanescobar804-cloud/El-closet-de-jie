@@ -32,6 +32,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   unreadNotificationsCount = 0,
   currentUser,
   onOpenCatalog,
+  onOpenFreeSellerPortal,
   onOpenOrders,
   onOpenCart,
   onOpenAuth,
@@ -83,19 +84,15 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             <span className="text-[10px] tracking-tight whitespace-nowrap">Inicio</span>
           </button>
 
-          {/* 2. 🛍️ Catálogo */}
+          {/* 2. 🏪 Mi Tienda */}
           <button
-            id="mobile-nav-catalog"
-            onClick={() => {
-              const el = document.getElementById('catalogo-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-              else onOpenCatalog();
-            }}
+            id="mobile-nav-mystore"
+            onClick={onOpenFreeSellerPortal || onOpenCatalog}
             className="flex flex-col items-center justify-center gap-0.5 h-full text-stone-600 active:scale-95 transition-all"
-            title="Catálogo de Ropa y Peluches"
+            title="Mi Tienda: Sube tus productos y gestiona tus ventas"
           >
-            <Store className="w-5 h-5 text-violet-600" />
-            <span className="text-[10px] tracking-tight whitespace-nowrap font-medium">Catálogo</span>
+            <Store className="w-5 h-5 text-emerald-600" />
+            <span className="text-[10px] tracking-tight whitespace-nowrap font-bold text-emerald-800">Mi Tienda</span>
           </button>
 
           {/* 3. 🛒 Carrito de Compras (Central destacado) */}
