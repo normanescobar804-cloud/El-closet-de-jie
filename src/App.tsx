@@ -2089,6 +2089,7 @@ export default function App() {
           setCurrentUser(updatedUser);
           saveUser(updatedUser);
         }}
+        onSaveSettings={handleSaveSettings}
       />
 
       {/* 15. Real-Time Order Notification Center Modal */}

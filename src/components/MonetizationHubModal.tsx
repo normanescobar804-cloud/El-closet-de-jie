@@ -23,7 +23,9 @@ import {
   ExternalLink,
   Clock,
   ArrowDownToLine,
-  RefreshCw
+  RefreshCw,
+  Settings,
+  Building2
 } from 'lucide-react';
 import { CurrencyType, Product, StoreSettings, UserAccount } from '../types';
 import {
@@ -53,6 +55,7 @@ interface MonetizationHubModalProps {
   currentUser: UserAccount | null;
   onUpdateProduct?: (product: Product) => void;
   onUpdateUser?: (user: UserAccount) => void;
+  onSaveSettings?: (settings: StoreSettings) => void;
 }
 
 export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
@@ -63,10 +66,11 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
   products,
   currentUser,
   onUpdateProduct,
-  onUpdateUser
+  onUpdateUser,
+  onSaveSettings
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'commission' | 'bank' | 'paypal' | 'ads' | 'memberships' | 'boosts' | 'verification' | 'history'
+    'overview' | 'config' | 'commission' | 'bank' | 'paypal' | 'ads' | 'memberships' | 'boosts' | 'verification' | 'history'
   >('overview');
 
   const [copiedWallet, setCopiedWallet] = useState(false);
@@ -85,9 +89,17 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
   const [selectedProductToBoost, setSelectedProductToBoost] = useState<string>(products[0]?.id || '');
   const [selectedBoostTier, setSelectedBoostTier] = useState<string>('boost_7_dias');
 
-  // PayPal Withdrawal State
+  // Payout Configuration State (Owner Configuration for Withdrawals)
   const defaultPaypalEmail =
     storeSettings.platformOwnerPaypalEmail || PLATFORM_OWNER_CONFIG.paypalEmail || '';
+  const [cfgPaypalEmail, setCfgPaypalEmail] = useState<string>(defaultPaypalEmail);
+  const [cfgBankName, setCfgBankName] = useState<string>(storeSettings.platformOwnerBank || 'Banco LAFISE Bancentro');
+  const [cfgBankAccount, setCfgBankAccount] = useState<string>(storeSettings.platformOwnerAccount || '134082049');
+  const [cfgBankHolder, setCfgBankHolder] = useState<string>(storeSettings.bankAccountHolder || 'Administración Central');
+  const [cfgWalletPhone, setCfgWalletPhone] = useState<string>(storeSettings.platformOwnerWallet || '+505 58898311');
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
+  // PayPal Withdrawal State
   const [paypalEmailInput, setPaypalEmailInput] = useState<string>(defaultPaypalEmail);
   const [withdrawAmountInput, setWithdrawAmountInput] = useState<number>(350);
   const [isProcessingWithdrawal, setIsProcessingWithdrawal] = useState(false);
@@ -351,6 +363,39 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
     }, 900);
   };
 
+  // Save Configured Payout Accounts (PayPal & Bank Account for Withdrawals)
+  const handleSavePayoutSettings = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    setIsSavingConfig(true);
+    const updatedSettings: StoreSettings = {
+      ...storeSettings,
+      platformOwnerPaypalEmail: cfgPaypalEmail.trim(),
+      platformOwnerBank: cfgBankName.trim(),
+      platformOwnerAccount: cfgBankAccount.trim(),
+      platformOwnerWallet: cfgWalletPhone.trim(),
+      bankAccountHolder: cfgBankHolder.trim()
+    };
+
+    if (onSaveSettings) {
+      onSaveSettings(updatedSettings);
+    }
+
+    // Keep active inputs synchronized
+    setPaypalEmailInput(cfgPaypalEmail.trim());
+    setBankNameInput(cfgBankName.trim());
+    setBankAccountInput(cfgBankAccount.trim());
+    setBankHolderInput(cfgBankHolder.trim());
+
+    setTimeout(() => {
+      setIsSavingConfig(false);
+      setActionSuccessMessage(
+        '¡Cuentas de retiro guardadas exitosamente! Ahora puedes solicitar tus retiros a tu PayPal o cuenta bancaria registrada.'
+      );
+      setTimeout(() => setActionSuccessMessage(''), 5000);
+    }, 400);
+  };
+
   // Handle Quick Simulated Ad Revenue Addition
   const handleAddSimulatedAdRevenue = (title: string, amountNIO: number, type: 'ingresos_adsense' | 'publicidad_anuncio') => {
     const newRecord: PlatformEarningRecord = {
@@ -503,6 +548,16 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('config')}
+            className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors ${
+              activeTab === 'config' ? 'border-violet-600 text-violet-900 bg-violet-50/50 rounded-t-lg' : 'border-transparent text-stone-500 hover:text-stone-800'
+            }`}
+          >
+            <Settings className="w-4 h-4 text-violet-600" />
+            <span>⚙️ Configurar Cuentas de Retiro</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('commission')}
             className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors ${
               activeTab === 'commission' ? 'border-emerald-600 text-emerald-900' : 'border-transparent text-stone-500 hover:text-stone-800'
@@ -606,12 +661,19 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
                   <span className="text-[10px] text-teal-700">98% directo a tiendas</span>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-sky-800 block">Saldo Retirable PayPal</span>
+                <div
+                  onClick={() => setActiveTab('config')}
+                  className="p-4 rounded-2xl bg-sky-50 border border-sky-200 hover:border-sky-400 space-y-1 cursor-pointer transition-all hover:shadow-xs group"
+                  title="Configurar cuentas de retiro o solicitar transferencias"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase text-sky-800 block">Saldo Retirable (Banco / PayPal)</span>
+                    <Settings className="w-3.5 h-3.5 text-sky-600 group-hover:rotate-45 transition-transform" />
+                  </div>
                   <p className="font-mono text-xl sm:text-2xl font-black text-sky-950">
                     {formatCurrency(availableWithdrawalBalanceNIO, currency, storeSettings.exchangeRate)}
                   </p>
-                  <span className="text-[10px] text-sky-700">Disponible para cobrar</span>
+                  <span className="text-[10px] text-sky-700 font-semibold underline">Configurar o Cobrar →</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-1">
@@ -727,6 +789,220 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 1.5 CONFIGURAR CUENTAS DE RETIRO (PAYPAL & BANCO) */}
+          {activeTab === 'config' && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Header Banner */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-violet-950 via-purple-900 to-indigo-950 text-white space-y-3 shadow-xl border border-violet-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center font-bold text-xl shadow-md shrink-0">
+                    ⚙️
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg sm:text-xl font-black">
+                      Configuración de Cuentas de Retiro del Propietario
+                    </h3>
+                    <p className="text-xs text-purple-200">
+                      Configura aquí tu correo electrónico oficial de PayPal y tu cuenta bancaria nacional (LAFISE, BAC, Banpro, etc.) para solicitar los retiros de las ganancias registradas en la app.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-white/10 text-xs">
+                  <div className="p-3 bg-white/10 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-purple-300 uppercase font-bold block">
+                        Saldo Actual Disponible para Retiro
+                      </span>
+                      <span className="font-mono text-xl font-black text-amber-300">
+                        C$ {availableWithdrawalBalanceNIO.toFixed(2)}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-emerald-300 font-bold bg-emerald-950/60 px-2.5 py-1 rounded-xl border border-emerald-500/40">
+                      Listo para Retirar
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-white/10 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-purple-300 uppercase font-bold block">
+                        Tarifa de Retiro
+                      </span>
+                      <span className="font-bold text-emerald-300">
+                        0% de comisión (Gratis e Imediato)
+                      </span>
+                    </div>
+                    <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Form to configure PayPal & Bank Account */}
+              <form onSubmit={handleSavePayoutSettings} className="space-y-6">
+                {/* 1. SECCIÓN: CONFIGURAR CUENTA PAYPAL */}
+                <div className="p-5 rounded-2xl bg-sky-50/50 border border-sky-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold">
+                        🅿️
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-stone-900 text-sm">
+                          1. Configuración de Cuenta PayPal
+                        </h4>
+                        <p className="text-[11px] text-stone-500">
+                          Aquí recibirás transferencias de tus retiros en Dólares ($ USD).
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded-full border border-sky-300">
+                      Internacional / Dólares
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                      Dirección de Correo Electrónico de PayPal para Retiros:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        required
+                        value={cfgPaypalEmail}
+                        onChange={(e) => setCfgPaypalEmail(e.target.value)}
+                        placeholder="tu-cuenta-paypal@ejemplo.com"
+                        className="w-full pl-3.5 pr-28 py-2.5 bg-white border border-stone-300 focus:border-sky-500 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none font-mono"
+                      />
+                      <span className="absolute right-3 top-2.5 text-[11px] font-bold text-stone-400">
+                        PayPal Oficial
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 mt-1">
+                      El dinero retirado por PayPal se transferirá automáticamente a este correo con el desglose en dólares.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 2. SECCIÓN: CONFIGURAR CUENTA BANCARIA NACIONAL */}
+                <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                        🏦
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-stone-900 text-sm">
+                          2. Configuración de Cuenta Bancaria Nacional (Nicaragua)
+                        </h4>
+                        <p className="text-[11px] text-stone-500">
+                          Transferencias ACH directas a tu banco en Córdobas (C$) o Dólares.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300">
+                      Nacional / ACH Directo
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        Banco Nacional:
+                      </label>
+                      <select
+                        value={cfgBankName}
+                        onChange={(e) => setCfgBankName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:border-emerald-600"
+                      >
+                        <option value="Banco LAFISE Bancentro">Banco LAFISE Bancentro</option>
+                        <option value="BAC Credomatic">BAC Credomatic Nicaragua</option>
+                        <option value="Banco de la Producción (Banpro)">Banpro Promerica</option>
+                        <option value="Banco Ficohsa">Banco Ficohsa</option>
+                        <option value="Banco BDF">Banco BDF</option>
+                        <option value="Billetera Móvil Banpro / LAFISE">Billetera Móvil Nacional</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        Número de Cuenta Bancaria:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={cfgBankAccount}
+                        onChange={(e) => setCfgBankAccount(e.target.value)}
+                        placeholder="Ej. 134082049"
+                        className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:border-emerald-600 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        Nombre del Titular de la Cuenta:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={cfgBankHolder}
+                        onChange={(e) => setCfgBankHolder(e.target.value)}
+                        placeholder="Nombre completo del propietario"
+                        className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:border-emerald-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        Número de Billetera Móvil (WhatsApp):
+                      </label>
+                      <input
+                        type="tel"
+                        value={cfgWalletPhone}
+                        onChange={(e) => setCfgWalletPhone(e.target.value)}
+                        placeholder="Ej. +505 58898311"
+                        className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:border-emerald-600 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit button & Actions */}
+                <div className="p-4 bg-stone-50 rounded-2xl border border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-xs text-stone-600">
+                    <p className="font-semibold text-stone-800">
+                      💾 Las cuentas quedan guardadas permanentemente en tu configuración.
+                    </p>
+                    <span className="text-[11px] text-stone-500">
+                      Al solicitar retiros en las pestañas "Retiro Bancario" o "Retiros PayPal", estos datos se usarán de forma predeterminada.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      type="submit"
+                      disabled={isSavingConfig}
+                      className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-violet-700 via-purple-700 to-indigo-700 hover:from-violet-800 hover:to-indigo-800 text-white font-black text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                    >
+                      {isSavingConfig ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Guardando cuentas...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4 text-amber-300" />
+                          <span>Guardar Cuentas de Retiro</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
           )}
 
