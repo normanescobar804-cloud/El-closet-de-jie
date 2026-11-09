@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  updateProfile,
   User
 } from 'firebase/auth';
 import {
@@ -1038,6 +1039,7 @@ export function subscribeToAllUsers(
           storeName: String(d.displayName || 'Usuario'),
           preferredPaymentMethod: 'transferencia_lafise',
           role: 'customer',
+          photoURL: d.photoURL ? String(d.photoURL) : undefined,
           isLoggedIn: false,
           createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : Date.now(),
           updatedAt: d.updatedAt instanceof Timestamp ? d.updatedAt.toMillis() : Date.now()
@@ -1049,6 +1051,27 @@ export function subscribeToAllUsers(
       handleFirestoreError(error, OperationType.LIST, 'users');
     }
   );
+}
+
+// ============================================================================
+// Real-time Profile Photo Update (Storage + Auth + Public User Record)
+// ============================================================================
+export async function updateUserCloudProfilePhoto(
+  photoUrlOrFile: string | File,
+  userId?: string
+): Promise<string> {
+  const effectiveUid = userId || auth.currentUser?.uid || 'user';
+  const photoUrl = await uploadProductImageToStorage(photoUrlOrFile, `avatar-${effectiveUid}`);
+
+  if (auth.currentUser) {
+    try {
+      await updateProfile(auth.currentUser, { photoURL: photoUrl });
+    } catch (err) {
+      console.info('Note on auth updateProfile:', err);
+    }
+  }
+
+  return photoUrl;
 }
 
 // ============================================================================

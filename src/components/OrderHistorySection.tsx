@@ -20,7 +20,8 @@ import {
   FileText,
   Download,
   Loader2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Printer
 } from 'lucide-react';
 import { CurrencyType, OrderRecord, Product, StoreSettings } from '../types';
 import { formatCurrency } from '../utils/storage';
@@ -36,6 +37,7 @@ interface OrderHistorySectionProps {
   onCloseModal?: () => void;
   onAddToCart?: (product: Product, size?: string, color?: string, quantity?: number) => void;
   onReorderAll?: (order: OrderRecord) => void;
+  onPrintInvoice?: (order: OrderRecord) => void;
 }
 
 export const OrderHistorySection: React.FC<OrderHistorySectionProps> = ({
@@ -46,6 +48,7 @@ export const OrderHistorySection: React.FC<OrderHistorySectionProps> = ({
   onCloseModal,
   onAddToCart,
   onReorderAll,
+  onPrintInvoice,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | OrderRecord['status']>('all');
@@ -422,6 +425,21 @@ export const OrderHistorySection: React.FC<OrderHistorySectionProps> = ({
                               : 'Recibo PDF'}
                           </span>
                         </button>
+
+                        {onPrintInvoice && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onPrintInvoice(order);
+                            }}
+                            title="Imprimir factura formal de compra"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-stone-800 hover:text-stone-950 bg-stone-100 hover:bg-stone-200 border border-stone-300 px-2 py-0.5 rounded-lg transition-all cursor-pointer shadow-2xs active:scale-95"
+                          >
+                            <Printer className="w-3 h-3 text-amber-600" />
+                            <span>Imprimir</span>
+                          </button>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3 text-xs text-stone-500 flex-wrap">
@@ -748,6 +766,22 @@ export const OrderHistorySection: React.FC<OrderHistorySectionProps> = ({
                         </>
                       )}
                     </button>
+
+                    {onPrintInvoice && (
+                      <button
+                        type="button"
+                        id={`btn-print-invoice-expanded-${order.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPrintInvoice(order);
+                        }}
+                        className="py-2.5 px-3.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-98 cursor-pointer shrink-0"
+                        title="Imprimir factura oficial de compra"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-stone-900" />
+                        <span>Imprimir Factura</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"

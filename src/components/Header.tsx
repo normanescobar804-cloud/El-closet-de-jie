@@ -61,6 +61,7 @@ interface HeaderProps {
   isCloudConnected?: boolean;
   visitDuration?: string;
   isOwnerCreator?: boolean;
+  onOpenStoresDirectory?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -100,6 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
   isCloudConnected = true,
   visitDuration = '1m',
   isOwnerCreator = false,
+  onOpenStoresDirectory
 }) => {
   const isCordobas = currency === 'NIO' || currency === 'cordobas';
 
@@ -204,6 +206,19 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
+            {/* Direct Directory of Clothing Stores & Boutiques for Customers */}
+            {onOpenStoresDirectory && (
+              <button
+                id="btn-open-stores-directory-header"
+                onClick={onOpenStoresDirectory}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 text-violet-950 border border-violet-200/90 rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                title="Buscar y visitar tiendas de ropa y boutiques asociadas"
+              >
+                <span className="text-xs">🏬</span>
+                <span>Tiendas de Ropa</span>
+              </button>
+            )}
+
             {/* Exclusive Creator-only App Earnings (Comisiones 2% y Retiros Banco / PayPal) */}
             {isOwnerCreator && onOpenMonetization && (
               <button
@@ -258,9 +273,18 @@ export const Header: React.FC<HeaderProps> = ({
                   title="Ver mi Cuenta, Pedidos y Métodos de Pago"
                   className="flex items-center gap-2 cursor-pointer text-left whitespace-nowrap shrink-0"
                 >
-                  <div className="w-6 h-6 rounded-full bg-violet-600 text-white flex items-center justify-center text-xs font-black shadow-2xs">
-                    {currentUser.name.charAt(0).toUpperCase()}
-                  </div>
+                  {currentUser.photoURL ? (
+                    <img
+                      src={currentUser.photoURL}
+                      alt={currentUser.name}
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded-full object-cover border border-violet-400 shadow-2xs shrink-0"
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-violet-600 text-white flex items-center justify-center text-xs font-black shadow-2xs shrink-0">
+                      {currentUser.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="text-xs font-semibold max-w-[90px] truncate">
                     {currentUser.name.split(' ')[0]}
                   </span>

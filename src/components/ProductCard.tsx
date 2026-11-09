@@ -15,6 +15,7 @@ interface ProductCardProps {
   onUpdateCartQuantity?: (product: Product, newQuantity: number) => void;
   onQuickView: (product: Product) => void;
   onOpenChat?: (product: Product) => void;
+  onSelectSeller?: (sellerName: string) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -29,6 +30,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onUpdateCartQuantity,
   onQuickView,
   onOpenChat,
+  onSelectSeller,
 }) => {
   const [selectedQty, setSelectedQty] = useState<number>(1);
   const [isZooming, setIsZooming] = useState<boolean>(false);
@@ -249,7 +251,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.sellerName && (
               <>
                 <span aria-hidden="true">·</span>
-                <span className="inline-flex items-center gap-0.5 font-semibold text-emerald-700 truncate">
+                <span
+                  onClick={(e) => {
+                    if (onSelectSeller && product.sellerName) {
+                      e.stopPropagation();
+                      onSelectSeller(product.sellerName);
+                    }
+                  }}
+                  className="inline-flex items-center gap-0.5 font-semibold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer truncate"
+                  title={`Ver todas las prendas de ${product.sellerName}`}
+                >
                   <Store className="w-2.5 h-2.5 shrink-0" />
                   <span className="truncate">{product.sellerName}</span>
                 </span>

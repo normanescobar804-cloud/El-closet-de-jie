@@ -16,7 +16,8 @@ import {
   Smartphone,
   Link2,
   Banknote,
-  ExternalLink
+  ExternalLink,
+  Printer
 } from 'lucide-react';
 import {
   CartItem,
@@ -53,6 +54,7 @@ interface CartDrawerProps {
   onRemoveItem: (itemId: string) => void;
   onClearCart: () => void;
   onOrderCompleted?: (order: OrderRecord) => void;
+  onPrintInvoice?: (order: OrderRecord) => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -67,6 +69,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onRemoveItem,
   onClearCart,
   onOrderCompleted,
+  onPrintInvoice,
 }) => {
   const nameInputId = useId();
   const phoneInputId = useId();
@@ -602,10 +605,22 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               </div>
             </div>
 
-            <div className="p-4 bg-white border-t border-stone-200 shrink-0">
+            <div className="p-4 bg-white border-t border-stone-200 shrink-0 space-y-2">
+              {onPrintInvoice && completedOrder && (
+                <button
+                  type="button"
+                  id="btn-print-invoice-cart-completed"
+                  onClick={() => onPrintInvoice(completedOrder)}
+                  className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+                  title="Mandar a imprimir la factura oficial de tu compra"
+                >
+                  <Printer className="w-4 h-4 text-stone-900" />
+                  <span>🖨️ Imprimir Factura Oficial de Compra</span>
+                </button>
+              )}
               <button
                 onClick={handleCloseAfterCompleted}
-                className="w-full py-3 bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm rounded-xl transition-colors shadow-xs cursor-pointer"
+                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl transition-colors shadow-xs cursor-pointer"
               >
                 Volver al Catálogo y Seguir Comprando
               </button>

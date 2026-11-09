@@ -219,7 +219,7 @@ export const CustomerChatModal: React.FC<CustomerChatModalProps> = ({
       senderId: effectiveSenderId,
       senderName: effectiveSenderName,
       senderRole: effectiveSenderRole,
-      senderAvatar: effectiveSenderRole === 'admin' ? '👑' : effectiveSenderRole === 'seller' ? '🏪' : '🛍️',
+      senderAvatar: currentUser?.photoURL || (effectiveSenderRole === 'admin' ? '👑' : effectiveSenderRole === 'seller' ? '🏪' : '🛍️'),
       recipientId: activeConversation === 'comunidad' ? 'all' : 'admin',
       text: inputText.trim() || '🎙️ Nota de voz con voz original',
       audioUrl,
@@ -254,7 +254,7 @@ export const CustomerChatModal: React.FC<CustomerChatModalProps> = ({
       senderId: effectiveSenderId,
       senderName: effectiveSenderName,
       senderRole: effectiveSenderRole,
-      senderAvatar: effectiveSenderRole === 'admin' ? '👑' : effectiveSenderRole === 'seller' ? '🏪' : '🛍️',
+      senderAvatar: currentUser?.photoURL || (effectiveSenderRole === 'admin' ? '👑' : effectiveSenderRole === 'seller' ? '🏪' : '🛍️'),
       recipientId: activeConversation === 'comunidad' ? 'all' : 'admin',
       text: inputText.trim() || defaultText,
       audioUrl: synthetic.audioUrl,
@@ -286,7 +286,7 @@ export const CustomerChatModal: React.FC<CustomerChatModalProps> = ({
       senderId: effectiveSenderId,
       senderName: effectiveSenderName,
       senderRole: effectiveSenderRole,
-      senderAvatar: effectiveSenderRole === 'admin' ? '👑' : effectiveSenderRole === 'seller' ? '🏪' : '🛍️',
+      senderAvatar: currentUser?.photoURL || (effectiveSenderRole === 'admin' ? '👑' : effectiveSenderRole === 'seller' ? '🏪' : '🛍️'),
       recipientId: activeConversation === 'comunidad' ? 'all' : 'admin',
       text: inputText.trim(),
       productId: attachedProduct?.id,
@@ -473,6 +473,15 @@ export const CustomerChatModal: React.FC<CustomerChatModalProps> = ({
                 <div key={msg.id} className={`flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'} animate-fade-in`}>
                   {/* Sender Header */}
                   <div className="flex items-center gap-1.5 text-[11px] px-1 text-stone-500">
+                    {msg.senderAvatar?.startsWith('data:') || msg.senderAvatar?.startsWith('http') ? (
+                      <img
+                        src={msg.senderAvatar}
+                        alt={msg.senderName}
+                        className="w-4 h-4 rounded-full object-cover border border-violet-300 shrink-0"
+                      />
+                    ) : (
+                      <span className="text-xs">{msg.senderAvatar || '👤'}</span>
+                    )}
                     <span className="font-bold text-stone-700">{isMe ? 'Tú' : msg.senderName}</span>
                     {msg.senderRole === 'admin' && (
                       <span className="bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.2 rounded font-mono">

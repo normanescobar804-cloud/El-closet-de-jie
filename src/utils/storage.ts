@@ -299,6 +299,23 @@ export function deleteCustomerAccountPermanently(userUidOrPhone: string): void {
   saveUser(null);
 }
 
+// 🔄 Actualizar Cuenta de Usuario y Foto de Perfil en Tiempo Real
+export function updateRegisteredAccount(updatedUser: UserAccount): void {
+  const accounts = getRegisteredAccounts();
+  const idx = accounts.findIndex(
+    (acc) =>
+      (updatedUser.uid && acc.uid === updatedUser.uid) ||
+      (updatedUser.phone && acc.phone === updatedUser.phone) ||
+      (updatedUser.phoneOrEmail && acc.phoneOrEmail === updatedUser.phoneOrEmail) ||
+      (updatedUser.email && acc.email === updatedUser.email)
+  );
+  if (idx !== -1) {
+    accounts[idx] = { ...accounts[idx], ...updatedUser, updatedAt: Date.now() };
+    saveRegisteredAccounts(accounts);
+  }
+  saveUser(updatedUser);
+}
+
 // Favorites
 export function getSavedFavorites(): string[] {
   return getFromStorage<string[]>(STORAGE_KEYS.FAVORITES, []);

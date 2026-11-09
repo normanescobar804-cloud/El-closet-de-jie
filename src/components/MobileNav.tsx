@@ -143,7 +143,16 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             title="Cuenta de cliente y acceso administrativo"
           >
             <div className="relative">
-              <User className="w-5 h-5" />
+              {currentUser?.isLoggedIn && currentUser.photoURL ? (
+                <img
+                  src={currentUser.photoURL}
+                  alt={currentUser.name}
+                  referrerPolicy="no-referrer"
+                  className="w-5 h-5 rounded-full object-cover border border-violet-400 shadow-2xs"
+                />
+              ) : (
+                <User className="w-5 h-5" />
+              )}
             </div>
             <span className="text-[10px] tracking-tight font-medium whitespace-nowrap">
               {currentUser?.isLoggedIn ? 'Mi Cuenta' : 'Cuenta'}

@@ -42,7 +42,8 @@ import {
   Mail,
   Key,
   ArrowLeft,
-  Send
+  Send,
+  Printer
 } from 'lucide-react';
 import {
   PLATFORM_OWNER_CONFIG,
@@ -110,9 +111,9 @@ interface AdminModalProps {
   onSaveSettings: (settings: StoreSettings) => void;
   onUpdateOrderStatus: (orderId: string, status: OrderRecord['status'], paymentStatus?: PaymentStatusType) => void;
   onUpdateBusinessAd?: (updatedAd: BusinessAd) => void;
-  onDeleteBusinessAd?: (adId: string) => void;
   onOpenCreateAdModal?: () => void;
   onOpenChat?: () => void;
+  onPrintInvoice?: (order: OrderRecord) => void;
 }
 
 export const AdminModal: React.FC<AdminModalProps> = ({
@@ -134,6 +135,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   onDeleteBusinessAd,
   onOpenCreateAdModal,
   onOpenChat,
+  onPrintInvoice
 }) => {
   const pinInputId = useId();
   const searchFilterId = useId();
@@ -2116,6 +2118,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                                 <FileText className="w-3.5 h-3.5 text-violet-600" />
                                 <span>Recibo PDF</span>
                               </button>
+
+                              {onPrintInvoice && (
+                                <button
+                                  type="button"
+                                  onClick={() => onPrintInvoice(ord)}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-300 border border-amber-500 transition-all cursor-pointer shadow-2xs active:scale-95"
+                                  title="Imprimir factura formal de compra"
+                                >
+                                  <Printer className="w-3.5 h-3.5 text-stone-950" />
+                                  <span>Imprimir Factura</span>
+                                </button>
+                              )}
                               <div className="text-sm font-bold text-stone-950">
                                 Total: <span className="text-rose-900 font-extrabold">{formatCurrency(ord.total, ord.currency || currency, storeSettings.exchangeRate)}</span>
                               </div>

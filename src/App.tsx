@@ -54,6 +54,7 @@ import {
   saveProducts,
   saveSettings,
   saveUser,
+  updateRegisteredAccount,
   saveCurrency,
   resetProductsToDefault,
   formatCurrency,
@@ -138,6 +139,8 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { PrivacyPolicyModal } from './components/PrivacyPolicyModal';
 import { SplashScreen } from './components/SplashScreen';
 import { getUnreadChatCount } from './utils/chatStorage';
+import { InvoiceModal } from './components/InvoiceModal';
+import { StoreDirectoryModal } from './components/StoreDirectoryModal';
 
 type PriceRangeType = 'all' | '10-50' | '50-100' | '100-200' | '200-500' | '500+';
 type SortOrderType = 'featured' | 'price-asc' | 'price-desc' | 'name-asc';
@@ -189,6 +192,8 @@ export default function App() {
   const [chatInitialProduct, setChatInitialProduct] = useState<Product | null>(null);
   const [chatInitialConversation, setChatInitialConversation] = useState<string>('comunidad');
   const [unreadChatCount, setUnreadChatCount] = useState<number>(getUnreadChatCount);
+  const [isStoreDirectoryOpen, setIsStoreDirectoryOpen] = useState(false);
+  const [printingInvoiceOrder, setPrintingInvoiceOrder] = useState<OrderRecord | null>(null);
 
   const handleOpenChat = (product?: Product, conversationId: string = 'comunidad') => {
     setChatInitialProduct(product || null);
@@ -953,6 +958,7 @@ export default function App() {
           setCatalogSection(sec);
           document.getElementById('catalogo-section')?.scrollIntoView({ behavior: 'smooth' });
         }}
+        onOpenStoresDirectory={() => setIsStoreDirectoryOpen(true)}
         onGoHome={() => {
           setCatalogSection('todas');
           setSelectedCategory('Todas');
@@ -1390,15 +1396,27 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xs sm:text-sm font-black text-stone-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Filter className="w-4 h-4 text-violet-600" />
-              <span>Categorías del Catálogo Abierto</span>
-            </h2>
-            <span className="text-[11px] text-stone-500 font-bold tabular-nums">
-              {displayedProducts.length} producto{displayedProducts.length !== 1 ? 's' : ''} disponible{displayedProducts.length !== 1 ? 's' : ''}
-            </span>
-          </div>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="text-xs sm:text-sm font-black text-stone-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Filter className="w-4 h-4 text-violet-600" />
+                <span>Categorías del Catálogo Abierto</span>
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="btn-open-stores-dir-inline"
+                  onClick={() => setIsStoreDirectoryOpen(true)}
+                  className="px-3 py-1.5 bg-gradient-to-r from-violet-700 to-indigo-700 hover:from-violet-800 hover:to-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  title="Buscar y visitar tiendas de ropa y boutiques"
+                >
+                  <Store className="w-3.5 h-3.5 text-amber-300" />
+                  <span>🏬 Buscar Tienda ({availableSellers.length - 1})</span>
+                </button>
+                <span className="text-[11px] text-stone-500 font-bold tabular-nums hidden sm:inline">
+                  {displayedProducts.length} producto{displayedProducts.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+            </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-0.5 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
             {PRODUCT_CATEGORIES.map((category) => (
@@ -1607,6 +1625,49 @@ export default function App() {
           )}
         </div>
 
+        {/* Active Store Showcase Banner (When customer is visiting a specific store) */}
+        {selectedSellerFilter !== 'Todas' && (
+          <div className="mb-6 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-violet-950 via-purple-900 to-indigo-950 text-white shadow-xl border border-violet-400/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fadeIn">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center font-bold text-2xl shadow-md shrink-0">
+                🏬
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full text-purple-200">
+                    Vitrina Oficial de la Tienda
+                  </span>
+                  <h3 className="font-serif text-lg sm:text-xl font-black text-white">
+                    {selectedSellerFilter}
+                  </h3>
+                </div>
+                <p className="text-xs text-purple-200 mt-0.5">
+                  Estás viendo la variedad de {displayedProducts.length} {displayedProducts.length === 1 ? 'prenda' : 'prendas'} y variedades exclusivas de esta boutique.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                id="btn-switch-store-banner"
+                onClick={() => setIsStoreDirectoryOpen(true)}
+                className="flex-1 sm:flex-none px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white text-xs font-bold rounded-xl transition-all border border-white/20 cursor-pointer text-center"
+              >
+                Cambiar Tienda
+              </button>
+              <button
+                type="button"
+                id="btn-exit-store-banner"
+                onClick={() => setSelectedSellerFilter('Todas')}
+                className="flex-1 sm:flex-none px-4 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 text-xs font-black rounded-xl transition-all shadow-md active:scale-95 cursor-pointer text-center"
+              >
+                ✕ Ver Catálogo Completo
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 4. Product Cards Grid + Interleaved Sponsored Nicaraguan Business Ads */}
         {displayedProducts.length === 0 ? (
           <div className="py-16 text-center bg-white rounded-3xl border border-stone-200 p-8 space-y-4 max-w-lg mx-auto shadow-xs">
@@ -1660,6 +1721,10 @@ export default function App() {
                     onUpdateCartQuantity={handleUpdateProductCartQuantity}
                     onQuickView={setQuickViewProduct}
                     onOpenChat={handleOpenChat}
+                    onSelectSeller={(seller) => {
+                      setSelectedSellerFilter(seller);
+                      document.getElementById('catalogo-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
                   />
                   {sponsoredAdForSlot && (
                     <SponsoredCatalogCard
@@ -1958,6 +2023,7 @@ export default function App() {
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
         onOrderCompleted={handleOrderCompleted}
+        onPrintInvoice={(order) => setPrintingInvoiceOrder(order)}
       />
 
       {/* 11. Product Detail Modal */}
@@ -2024,12 +2090,14 @@ export default function App() {
         onUpdateUser={(updatedUser) => {
           setCurrentUser(updatedUser);
           saveUser(updatedUser);
+          updateRegisteredAccount(updatedUser);
           if (auth.currentUser) {
             ensureCustomerAccountInFirestore(auth.currentUser, updatedUser, favorites).catch(() => {});
           }
-          addToast('info', 'Perfil Actualizado', 'Tus datos se han guardado correctamente.');
+          addToast('info', 'Perfil Actualizado', 'Tus datos se han guardado correctamente en tiempo real.');
         }}
         onReorderAll={handleReorderAll}
+        onPrintInvoice={(order) => setPrintingInvoiceOrder(order)}
         initialTab={authInitialTab}
         testimonials={testimonials}
         onAddTestimonial={handleAddTestimonial}
@@ -2130,6 +2198,7 @@ export default function App() {
         onDeleteBusinessAd={handleDeleteBusinessAd}
         onOpenCreateAdModal={() => setIsAdvertiseModalOpen(true)}
         onOpenChat={() => handleOpenChat()}
+        onPrintInvoice={(order) => setPrintingInvoiceOrder(order)}
       />
 
       {/* 17. Nicaraguan Business Advertising Self-Serve Portal Modal */}
@@ -2260,10 +2329,33 @@ export default function App() {
         </div>
       )}
 
-      {/* 22. Floating Toasts */}
+      {/* 22. Official Printable Invoice Modal */}
+      <InvoiceModal
+        isOpen={Boolean(printingInvoiceOrder)}
+        onClose={() => setPrintingInvoiceOrder(null)}
+        order={printingInvoiceOrder}
+        storeSettings={storeSettings}
+        currency={currency}
+      />
+
+      {/* 23. Clothing Stores & Boutiques Directory Showcase Modal */}
+      <StoreDirectoryModal
+        isOpen={isStoreDirectoryOpen}
+        onClose={() => setIsStoreDirectoryOpen(false)}
+        products={products}
+        storeSettings={storeSettings}
+        currentUser={currentUser}
+        onSelectStore={(storeName) => {
+          setSelectedSellerFilter(storeName);
+          document.getElementById('catalogo-section')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        onOpenSellerPortal={() => setIsFreeSellerPortalOpen(true)}
+      />
+
+      {/* 24. Floating Toasts */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
-      {/* 23. Offline Mode Service Worker Indicator */}
+      {/* 25. Offline Mode Service Worker Indicator */}
       <OfflineIndicator />
     </div>
   );
