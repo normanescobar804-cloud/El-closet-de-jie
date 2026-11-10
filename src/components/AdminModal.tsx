@@ -46,14 +46,7 @@ import {
   Printer
 } from 'lucide-react';
 import {
-  PLATFORM_OWNER_CONFIG,
-  STORE_MEMBERSHIP_TIERS,
-  PRODUCT_BOOST_TIERS,
-  STORE_VERIFICATION_PLAN,
-  getSavedPlatformEarnings,
-  savePlatformEarning,
-  PlatformEarningRecord,
-  calculateEarningsSplit
+  getSavedPlatformEarnings
 } from '../utils/monetization';
 import {
   AnalyticsData,
@@ -2490,7 +2483,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         onChange={(e) =>
                           setAdSenseForm({ ...adSenseForm, inFeedSlotId: e.target.value })
                         }
-                        placeholder="Ej: 5647382910"
+                        placeholder="Ej: 1234567890"
                         className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl font-mono text-xs"
                       />
                     </div>
@@ -2505,7 +2498,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         onChange={(e) =>
                           setAdSenseForm({ ...adSenseForm, footerSlotId: e.target.value })
                         }
-                        placeholder="Ej: 9081726354"
+                        placeholder="Ej: 0987654321"
                         className="w-full px-3 py-2 bg-white border border-stone-200 rounded-xl font-mono text-xs"
                       />
                     </div>
@@ -3311,56 +3304,56 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Financial Metrics */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-emerald-800/60">
-                    <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-                      <span className="text-[10px] text-emerald-300 uppercase tracking-wider block font-bold">
-                        Ventas Totales (100%)
-                      </span>
-                      <p className="font-mono text-lg font-black text-white mt-0.5">
-                        {formatCurrency(
-                          orders.reduce((acc, o) => acc + (o.total || 0), 0) || 12500,
-                          currency,
-                          storeSettings.exchangeRate
-                        )}
-                      </p>
-                    </div>
+                  {/* Financial Metrics (100% Real Data - Zero Simulated Fallbacks) */}
+                  {(() => {
+                    const realOrdersTotal = orders.reduce((acc, o) => acc + (o.total || 0), 0);
+                    const realEarnings = getSavedPlatformEarnings();
+                    const confirmedTotal = realEarnings
+                      .filter((e) => e.status === 'liquidado')
+                      .reduce((sum, e) => sum + e.amountNIO, 0);
+                    const pendingTotal = realEarnings
+                      .filter((e) => e.status === 'pendiente_confirmacion')
+                      .reduce((sum, e) => sum + e.amountNIO, 0);
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-emerald-800/60">
+                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
+                          <span className="text-[10px] text-emerald-300 uppercase tracking-wider block font-bold">
+                            Ventas Reales Totales (100%)
+                          </span>
+                          <p className="font-mono text-lg font-black text-white mt-0.5">
+                            {formatCurrency(realOrdersTotal, currency, storeSettings.exchangeRate)}
+                          </p>
+                        </div>
 
-                    <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-                      <span className="text-[10px] text-sky-300 uppercase tracking-wider block font-bold">
-                        A las Tiendas (98%)
-                      </span>
-                      <p className="font-mono text-lg font-black text-white mt-0.5">
-                        {formatCurrency(
-                          (orders.reduce((acc, o) => acc + (o.total || 0), 0) || 12500) * 0.98,
-                          currency,
-                          storeSettings.exchangeRate
-                        )}
-                      </p>
-                    </div>
+                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
+                          <span className="text-[10px] text-sky-300 uppercase tracking-wider block font-bold">
+                            A las Tiendas (98%)
+                          </span>
+                          <p className="font-mono text-lg font-black text-white mt-0.5">
+                            {formatCurrency(realOrdersTotal * 0.98, currency, storeSettings.exchangeRate)}
+                          </p>
+                        </div>
 
-                    <div className="p-3 bg-emerald-900/60 rounded-2xl border border-emerald-500/50">
-                      <span className="text-[10px] text-amber-300 uppercase tracking-wider block font-bold">
-                        🛡️ Comisión Dueño (2%)
-                      </span>
-                      <p className="font-mono text-lg font-black text-amber-300 mt-0.5">
-                        {formatCurrency(
-                          (orders.reduce((acc, o) => acc + (o.total || 0), 0) || 12500) * 0.02,
-                          currency,
-                          storeSettings.exchangeRate
-                        )}
-                      </p>
-                    </div>
+                        <div className="p-3 bg-emerald-900/60 rounded-2xl border border-emerald-500/50">
+                          <span className="text-[10px] text-amber-300 uppercase tracking-wider block font-bold">
+                            🛡️ Ingresos Confirmados App
+                          </span>
+                          <p className="font-mono text-lg font-black text-amber-300 mt-0.5">
+                            {formatCurrency(confirmedTotal, currency, storeSettings.exchangeRate)}
+                          </p>
+                        </div>
 
-                    <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
-                      <span className="text-[10px] text-purple-300 uppercase tracking-wider block font-bold">
-                        Publicidad & PayPal
-                      </span>
-                      <p className="font-mono text-lg font-black text-white mt-0.5">
-                        {formatCurrency(945, currency, storeSettings.exchangeRate)}
-                      </p>
-                    </div>
-                  </div>
+                        <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
+                          <span className="text-[10px] text-purple-300 uppercase tracking-wider block font-bold">
+                            Por Confirmar (Pendientes)
+                          </span>
+                          <p className="font-mono text-lg font-black text-white mt-0.5">
+                            {formatCurrency(pendingTotal, currency, storeSettings.exchangeRate)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Monetization Streams Explanation */}
@@ -3433,35 +3426,52 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                 {/* Recent Platform Commission Records */}
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
                   <h4 className="font-bold text-xs uppercase tracking-wider text-stone-800">
-                    Últimas Liquidaciones del 2% y Servicios Registrados
+                    Últimos Ingresos Reales Registrados
                   </h4>
 
                   <div className="space-y-2">
-                    {getSavedPlatformEarnings().slice(0, 5).map((earn) => (
-                      <div
-                        key={earn.id}
-                        className="p-3 bg-white border border-stone-200 rounded-xl flex items-center justify-between text-xs"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <div>
-                            <span className="font-bold text-stone-900 block">{earn.title}</span>
-                            <span className="text-[10px] text-stone-500">
-                              {earn.storeOrUserName} • {earn.date}
+                    {getSavedPlatformEarnings().length === 0 ? (
+                      <div className="p-6 text-center bg-white border border-dashed border-stone-300 rounded-xl text-stone-500 text-xs">
+                        Aún no hay ingresos registrados. Aparecerán aquí automáticamente en tiempo real cuando entren pedidos reales, suscripciones Pro/VIP, impulsos o anuncios pagados.
+                      </div>
+                    ) : (
+                      getSavedPlatformEarnings().slice(0, 8).map((earn) => (
+                        <div
+                          key={earn.id}
+                          className="p-3 bg-white border border-stone-200 rounded-xl flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <CheckCircle2
+                              className={`w-4 h-4 shrink-0 ${
+                                earn.status === 'liquidado' ? 'text-emerald-600' : 'text-amber-500'
+                              }`}
+                            />
+                            <div>
+                              <span className="font-bold text-stone-900 block">{earn.title}</span>
+                              <span className="text-[10px] text-stone-500">
+                                {earn.storeOrUserName} • {earn.date} •{' '}
+                                {earn.status === 'liquidado' ? 'Confirmado' : 'Pendiente confirmación'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right">
+                            <span className="font-mono font-black text-emerald-800 block">
+                              +{formatCurrency(earn.amountNIO, currency, storeSettings.exchangeRate)}
+                            </span>
+                            <span className="text-[10px] text-stone-400 font-mono">
+                              {earn.paymentDestination === 'paypal'
+                                ? 'PayPal'
+                                : earn.paymentDestination === 'billetera_movil'
+                                ? 'Billetera'
+                                : earn.paymentDestination === 'digital_link'
+                                ? 'Enlace Digital'
+                                : 'Cuenta Banco'}
                             </span>
                           </div>
                         </div>
-
-                        <div className="text-right">
-                          <span className="font-mono font-black text-emerald-800 block">
-                            +{formatCurrency(earn.amountNIO, currency, storeSettings.exchangeRate)}
-                          </span>
-                          <span className="text-[10px] text-stone-400 font-mono">
-                            {earn.paymentDestination === 'billetera_movil' ? 'Billetera' : 'LAFISE'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               </div>

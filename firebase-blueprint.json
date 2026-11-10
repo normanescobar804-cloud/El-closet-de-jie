@@ -788,6 +788,300 @@
         "createdAt",
         "updatedAt"
       ]
+    },
+    "PlatformPublicConfig": {
+      "title": "PlatformPublicConfig",
+      "description": "Public platform monetization & Google AdSense configuration managed by the platform owner.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Configuration document ID ('public').",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "adSenseEnabled": {
+          "type": "boolean",
+          "description": "Whether Google AdSense slots are active."
+        },
+        "adSensePublisherId": {
+          "type": "string",
+          "description": "Google AdSense publisher ID (ca-pub-...).",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "adSenseHeaderSlotId": {
+          "type": "string",
+          "description": "Google AdSense header ad slot ID.",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "adSenseInFeedSlotId": {
+          "type": "string",
+          "description": "Google AdSense catalog in-feed ad slot ID.",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "adSenseFooterSlotId": {
+          "type": "string",
+          "description": "Google AdSense footer ad slot ID.",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "adSenseAutoAds": {
+          "type": "boolean",
+          "description": "Whether Google AdSense Auto Ads are enabled."
+        },
+        "platformPaymentLink": {
+          "type": "string",
+          "description": "Public business PayPal / digital checkout link for platform services.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "platformFeePercent": {
+          "type": "number",
+          "description": "Platform commission percentage on real orders."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "adSenseEnabled",
+        "adSensePublisherId",
+        "adSenseHeaderSlotId",
+        "adSenseInFeedSlotId",
+        "adSenseFooterSlotId",
+        "adSenseAutoAds",
+        "platformPaymentLink",
+        "platformFeePercent",
+        "updatedAt"
+      ]
+    },
+    "PlatformEarning": {
+      "title": "PlatformEarning",
+      "description": "Real-time platform earning record from commissions, paid ads, subscriptions, boosts, or AdSense settlements.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique earning record ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user/seller/admin who submitted the transaction.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "source": {
+          "type": "string",
+          "description": "Revenue stream source identifier.",
+          "enum": [
+            "comision_2_porciento",
+            "comision_3_porciento",
+            "plan_tienda_pro",
+            "plan_boutique_vip",
+            "destacado_producto",
+            "verificacion_tienda",
+            "publicidad_anuncio",
+            "ingresos_adsense"
+          ],
+          "minLength": 10,
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "description": "Concept description of the earning.",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "amountNIO": {
+          "type": "number",
+          "description": "Earning amount in Cordobas."
+        },
+        "storeOrUserName": {
+          "type": "string",
+          "description": "Store, advertiser, or user associated with this transaction.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "dateLabel": {
+          "type": "string",
+          "description": "Human-readable date label.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "status": {
+          "type": "string",
+          "description": "Payment verification status.",
+          "enum": ["pendiente_confirmacion", "liquidado", "rechazado"],
+          "minLength": 9,
+          "maxLength": 25
+        },
+        "reference": {
+          "type": "string",
+          "description": "Transaction voucher or reference ID.",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "paymentDestination": {
+          "type": "string",
+          "description": "Payment collection destination.",
+          "enum": ["billetera_movil", "cuenta_lafise", "paypal", "digital_link"],
+          "minLength": 6,
+          "maxLength": 25
+        },
+        "targetId": {
+          "type": "string",
+          "description": "Optional related order, ad, or product ID.",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "authorId",
+        "source",
+        "title",
+        "amountNIO",
+        "storeOrUserName",
+        "dateLabel",
+        "status",
+        "reference",
+        "paymentDestination",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PlatformWithdrawal": {
+      "title": "PlatformWithdrawal",
+      "description": "Owner-only real PayPal or national bank withdrawal record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Withdrawal document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the platform owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "method": {
+          "type": "string",
+          "description": "Withdrawal channel: paypal or bank.",
+          "enum": ["paypal", "bank"],
+          "minLength": 4,
+          "maxLength": 10
+        },
+        "destination": {
+          "type": "string",
+          "description": "Target PayPal email or bank account number.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "bankName": {
+          "type": "string",
+          "description": "Bank institution name (or PayPal).",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "accountHolder": {
+          "type": "string",
+          "description": "Account holder display name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "amountNIO": {
+          "type": "number",
+          "description": "Withdrawn amount in Cordobas."
+        },
+        "amountUSD": {
+          "type": "number",
+          "description": "Equivalent withdrawn amount in USD."
+        },
+        "dateLabel": {
+          "type": "string",
+          "description": "Human-readable date label.",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "status": {
+          "type": "string",
+          "description": "Withdrawal execution status.",
+          "enum": ["solicitado", "completado"],
+          "minLength": 9,
+          "maxLength": 15
+        },
+        "transactionId": {
+          "type": "string",
+          "description": "PayPal or Bank ACH transaction reference.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "sourceBreakdown": {
+          "type": "string",
+          "description": "Description of included earnings.",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional payout note.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "method",
+        "destination",
+        "bankName",
+        "accountHolder",
+        "amountNIO",
+        "amountUSD",
+        "dateLabel",
+        "status",
+        "transactionId",
+        "sourceBreakdown",
+        "note",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -822,6 +1116,18 @@
     "/notifications/{notificationId}": {
       "schema": { "$ref": "#/entities/OrderNotification" },
       "description": "Real-time order notifications for customers and store administration."
+    },
+    "/platform_config/{configId}": {
+      "schema": { "$ref": "#/entities/PlatformPublicConfig" },
+      "description": "Public Google AdSense and platform payment link configuration managed by platform owner."
+    },
+    "/platform_earnings/{earningId}": {
+      "schema": { "$ref": "#/entities/PlatformEarning" },
+      "description": "Real-time platform earnings ledger for commissions, ads, subscriptions, and AdSense payouts."
+    },
+    "/platform_withdrawals/{withdrawalId}": {
+      "schema": { "$ref": "#/entities/PlatformWithdrawal" },
+      "description": "Owner-exclusive PayPal and bank withdrawal ledger."
     }
   }
 }

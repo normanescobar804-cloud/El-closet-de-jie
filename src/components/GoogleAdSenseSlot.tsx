@@ -22,18 +22,24 @@ export const GoogleAdSenseSlot: React.FC<GoogleAdSenseSlotProps> = ({
   const adPushed = useRef(false);
 
   const isEnabled = config?.enabled !== false;
-  const publisherId = config?.publisherId?.trim() || 'ca-pub-0000000000000000';
+  const publisherId = (config?.publisherId || '').trim();
   const isRealPublisherId =
-    publisherId.startsWith('ca-pub-') &&
-    publisherId !== 'ca-pub-0000000000000000' &&
-    publisherId.length >= 20;
+    /^ca-pub-\d{10,20}$/.test(publisherId) &&
+    publisherId !== 'ca-pub-0000000000000000';
 
-  const slotId =
+  const rawSlotId =
     slotType === 'header'
-      ? config?.headerSlotId || '1029384756'
+      ? (config?.headerSlotId || '').trim()
       : slotType === 'infeed'
-      ? config?.inFeedSlotId || '5647382910'
-      : config?.footerSlotId || '9081726354';
+      ? (config?.inFeedSlotId || '').trim()
+      : (config?.footerSlotId || '').trim();
+  const slotId = /^\d{6,20}$/.test(rawSlotId) &&
+    rawSlotId !== '1029384756' &&
+    rawSlotId !== '5647382910' &&
+    rawSlotId !== '9081726354'
+    ? rawSlotId
+    : '';
+  const hasRenderableUnit = isRealPublisherId && Boolean(slotId);
 
   // Dynamically load AdSense script when a real publisher ID is configured
   useEffect(() => {
@@ -52,7 +58,7 @@ export const GoogleAdSenseSlot: React.FC<GoogleAdSenseSlotProps> = ({
       document.head.appendChild(script);
     }
 
-    if (!adPushed.current) {
+    if (hasRenderableUnit && !adPushed.current) {
       try {
         (window.adsbygoogle = window.adsbygoogle || []).push({});
         adPushed.current = true;
@@ -60,7 +66,7 @@ export const GoogleAdSenseSlot: React.FC<GoogleAdSenseSlotProps> = ({
         console.warn('AdSense push warning:', e);
       }
     }
-  }, [isEnabled, isRealPublisherId, publisherId]);
+  }, [isEnabled, isRealPublisherId, hasRenderableUnit, publisherId]);
 
   if (!isEnabled) return null;
 
@@ -72,9 +78,9 @@ export const GoogleAdSenseSlot: React.FC<GoogleAdSenseSlotProps> = ({
           <span className="flex items-center gap-1">
             <Globe className="w-3 h-3 text-sky-600" />
             <span>
-              {isRealPublisherId
+              {hasRenderableUnit
                 ? 'Publicidad • Google AdSense'
-                : 'Espacio Publicitario • Google AdSense & Negocios de Nicaragua'}
+                : 'Espacio Publicitario • Negocios de Nicaragua'}
             </span>
           </span>
           <button
@@ -87,8 +93,8 @@ export const GoogleAdSenseSlot: React.FC<GoogleAdSenseSlotProps> = ({
           </button>
         </div>
 
-        {/* Live Google AdSense Unit if real Publisher ID is configured */}
-        {isRealPublisherId ? (
+        {/* Live Google AdSense Unit if real Publisher ID + Slot ID are configured */}
+        {hasRenderableUnit ? (
           <div className="min-h-[90px] flex items-center justify-center bg-stone-50/50 rounded-xl overflow-hidden">
             <ins
               className="adsbygoogle"

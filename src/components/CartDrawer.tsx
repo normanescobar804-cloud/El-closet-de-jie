@@ -371,18 +371,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
       saveOrder(orderRecord);
 
-      // Registrar ganancia del 2% en el panel del dueño de la app
+      // Registrar ganancia real del 2% en el panel del dueño de la app (pendiente de confirmación hasta liquidar pago)
       if (platformFee > 0) {
         savePlatformEarning({
-          id: `earn-fee-${Date.now()}`,
+          id: `earn-order-${orderId}`,
+          authorId: currentUser?.uid,
           source: 'comision_2_porciento',
           title: `Comisión 2% Venta #${orderId}`,
           amountNIO: platformFee,
           storeOrUserName: cart[0]?.product.sellerName || storeSettings.storeName || 'Tienda Asociada',
-          date: 'Hoy',
-          status: 'liquidado',
-          reference: orderId,
-          paymentDestination: 'billetera_movil'
+          date: new Date().toLocaleDateString('es-NI'),
+          status: paymentResult.paymentStatus === 'pagado' ? 'liquidado' : 'pendiente_confirmacion',
+          reference: paymentResult.transactionReference || orderId,
+          paymentDestination: 'digital_link',
+          targetId: orderId
         });
       }
 

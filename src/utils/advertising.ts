@@ -102,10 +102,10 @@ export const AD_PLANS: AdPlanConfig[] = [
 
 export const DEFAULT_ADSENSE_CONFIG: GoogleAdSenseConfig = {
   enabled: true,
-  publisherId: 'ca-pub-0000000000000000',
-  headerSlotId: '1029384756',
-  inFeedSlotId: '5647382910',
-  footerSlotId: '9081726354',
+  publisherId: '',
+  headerSlotId: '',
+  inFeedSlotId: '',
+  footerSlotId: '',
   autoAdsEnabled: true,
   showFallbackSponsorPrompt: true
 };

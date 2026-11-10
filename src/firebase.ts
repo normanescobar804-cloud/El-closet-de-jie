@@ -35,14 +35,24 @@ import {
   AdPlanId,
   BusinessAd,
   CurrencyType,
+  GoogleAdSenseConfig,
   OrderNotification,
   OrderRecord,
   PaymentMethodType,
   PaymentStatusType,
   Product,
   RegisteredStore,
+  StoreSettings,
   UserAccount
 } from './types';
+import {
+  BankWithdrawalRecord,
+  isLegacySimulatedEarning,
+  LEGACY_SIMULATED_BANK_IDS,
+  LEGACY_SIMULATED_PAYPAL_IDS,
+  PaypalWithdrawalRecord,
+  PlatformEarningRecord
+} from './utils/monetization';
 import { LEGACY_AI_STORE_NAMES, isLegacyAiProduct } from './utils/storage';
 
 // Initialize Firebase App, Firestore Database, Auth, and Storage
@@ -1303,6 +1313,336 @@ export async function syncFavoritesToCloud(favorites: string[]): Promise<void> {
   } catch (error) {
     console.warn('Favorites cloud sync notice:', error);
   }
+}
+
+// ============================================================================
+// Real Platform Monetization Cloud Sync (AdSense Config, Earnings & Withdrawals)
+// ============================================================================
+export interface CloudPublicPlatformConfig {
+  adSenseConfig: GoogleAdSenseConfig;
+  platformPaymentLink: string;
+  platformFeePercent: number;
+}
+
+export async function savePlatformConfigToCloud(settings: StoreSettings): Promise<void> {
+  if (!auth.currentUser) return;
+  const path = 'platform_config/public';
+  const adCfg = settings.adSenseConfig;
+  const payload = {
+    id: 'public',
+    adSenseEnabled: adCfg?.enabled !== false,
+    adSensePublisherId: truncateString(adCfg?.publisherId || '', 64, ''),
+    adSenseHeaderSlotId: truncateString(adCfg?.headerSlotId || '', 64, ''),
+    adSenseInFeedSlotId: truncateString(adCfg?.inFeedSlotId || '', 64, ''),
+    adSenseFooterSlotId: truncateString(adCfg?.footerSlotId || '', 64, ''),
+    adSenseAutoAds: adCfg?.autoAdsEnabled !== false,
+    platformPaymentLink: truncateString(settings.platformPaymentLink || '', 300, ''),
+    platformFeePercent: Math.max(0, Math.min(50, Number(settings.platformFeePercent ?? 2))),
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    const snap = await getDoc(doc(db, 'platform_config', 'public'));
+    if (!snap.exists()) {
+      await setDoc(doc(db, 'platform_config', 'public'), payload);
+    } else {
+      await updateDoc(doc(db, 'platform_config', 'public'), payload);
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export function subscribeToPlatformConfig(
+  onConfigUpdate: (cfg: CloudPublicPlatformConfig) => void
+): () => void {
+  return onSnapshot(
+    doc(db, 'platform_config', 'public'),
+    (docSnap) => {
+      if (!docSnap.exists()) return;
+      const d = docSnap.data();
+      onConfigUpdate({
+        adSenseConfig: {
+          enabled: d.adSenseEnabled !== false,
+          publisherId: String(d.adSensePublisherId || ''),
+          headerSlotId: String(d.adSenseHeaderSlotId || ''),
+          inFeedSlotId: String(d.adSenseInFeedSlotId || ''),
+          footerSlotId: String(d.adSenseFooterSlotId || ''),
+          autoAdsEnabled: d.adSenseAutoAds !== false,
+          showFallbackSponsorPrompt: true
+        },
+        platformPaymentLink: String(d.platformPaymentLink || ''),
+        platformFeePercent: typeof d.platformFeePercent === 'number' ? d.platformFeePercent : 2
+      });
+    },
+    (error) => {
+      console.info('Platform public config listener notice:', error?.message || error);
+    }
+  );
+}
+
+export async function savePlatformEarningToCloud(record: PlatformEarningRecord): Promise<void> {
+  if (!auth.currentUser || isLegacySimulatedEarning(record)) return;
+
+  await ensureCustomerAccountInFirestore(auth.currentUser, {
+    name: record.storeOrUserName || auth.currentUser.displayName || 'Usuario'
+  });
+
+  const earningId = sanitizeId(record.id);
+  const path = `platform_earnings/${earningId}`;
+  const isOwnerAdmin = Boolean(
+    auth.currentUser.emailVerified &&
+      auth.currentUser.email?.toLowerCase() === ADMIN_OWNER_EMAIL.toLowerCase()
+  );
+
+  let existsInCloud = false;
+  try {
+    const snap = await getDoc(doc(db, 'platform_earnings', earningId));
+    existsInCloud = snap.exists();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+  }
+
+  const dest =
+    record.paymentDestination === 'billetera_movil' ||
+    record.paymentDestination === 'cuenta_lafise' ||
+    record.paymentDestination === 'paypal' ||
+    record.paymentDestination === 'digital_link'
+      ? record.paymentDestination
+      : 'digital_link';
+
+  // Only verified Admin can create directly as 'liquidado'; regular users create as 'pendiente_confirmacion'
+  const safeStatus = isOwnerAdmin ? record.status : 'pendiente_confirmacion';
+
+  if (!existsInCloud) {
+    const payload: Record<string, unknown> = {
+      id: earningId,
+      authorId: sanitizeId(auth.currentUser.uid),
+      source: record.source,
+      title: truncateString(record.title, 180, 'Ingreso de plataforma'),
+      amountNIO: Math.max(0, Math.min(1000000, Number(record.amountNIO) || 0)),
+      storeOrUserName: truncateString(record.storeOrUserName, 120, 'Tienda'),
+      dateLabel: truncateString(record.date || new Date().toLocaleDateString('es-NI'), 60, 'Hoy'),
+      status: safeStatus,
+      reference: truncateString(record.reference || '', 120, ''),
+      paymentDestination: dest,
+      updatedAt: serverTimestamp(),
+      createdAt: serverTimestamp()
+    };
+    if (record.targetId) {
+      payload.targetId = sanitizeId(record.targetId);
+    }
+    try {
+      await setDoc(doc(db, 'platform_earnings', earningId), payload);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  } else if (isOwnerAdmin) {
+    try {
+      await updateDoc(doc(db, 'platform_earnings', earningId), {
+        status: record.status,
+        reference: truncateString(record.reference || '', 120, ''),
+        amountNIO: Math.max(0, Math.min(1000000, Number(record.amountNIO) || 0)),
+        title: truncateString(record.title, 180, 'Ingreso de plataforma'),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  }
+}
+
+export async function updatePlatformEarningStatusInCloud(
+  earningId: string,
+  status: 'liquidado' | 'pendiente_confirmacion' | 'rechazado',
+  reference?: string
+): Promise<void> {
+  if (!auth.currentUser) return;
+  const cleanId = sanitizeId(earningId);
+  const path = `platform_earnings/${cleanId}`;
+  try {
+    const snap = await getDoc(doc(db, 'platform_earnings', cleanId));
+    if (!snap.exists()) return;
+    const payload: Record<string, unknown> = {
+      status,
+      updatedAt: serverTimestamp()
+    };
+    if (reference !== undefined) {
+      payload.reference = truncateString(reference, 120, '');
+    }
+    await updateDoc(doc(db, 'platform_earnings', cleanId), payload);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export function subscribeToPlatformEarnings(
+  uid: string,
+  isAdmin: boolean,
+  onEarningsUpdate: (earnings: PlatformEarningRecord[]) => void
+): () => void {
+  const q = isAdmin
+    ? query(collection(db, 'platform_earnings'))
+    : query(collection(db, 'platform_earnings'), where('authorId', '==', uid));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const loaded: PlatformEarningRecord[] = snapshot.docs
+        .map((docSnap) => {
+          const d = docSnap.data();
+          return {
+            id: String(d.id || docSnap.id),
+            authorId: d.authorId ? String(d.authorId) : undefined,
+            source: d.source as PlatformEarningRecord['source'],
+            title: String(d.title || 'Ingreso'),
+            amountNIO: Number(d.amountNIO) || 0,
+            storeOrUserName: String(d.storeOrUserName || 'Tienda'),
+            date: String(d.dateLabel || formatTimestampToIso(d.createdAt)),
+            status:
+              d.status === 'liquidado' || d.status === 'rechazado'
+                ? d.status
+                : 'pendiente_confirmacion',
+            reference: d.reference ? String(d.reference) : '',
+            paymentDestination:
+              (d.paymentDestination as PlatformEarningRecord['paymentDestination']) || 'digital_link',
+            targetId: d.targetId ? String(d.targetId) : undefined
+          } as PlatformEarningRecord;
+        })
+        .filter((e) => !isLegacySimulatedEarning(e));
+      onEarningsUpdate(loaded);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'platform_earnings');
+    }
+  );
+}
+
+export async function savePlatformWithdrawalToCloud(
+  method: 'paypal' | 'bank',
+  record: PaypalWithdrawalRecord | BankWithdrawalRecord
+): Promise<void> {
+  if (!auth.currentUser) return;
+  if (method === 'paypal' && LEGACY_SIMULATED_PAYPAL_IDS.has(record.id)) return;
+  if (method === 'bank' && LEGACY_SIMULATED_BANK_IDS.has(record.id)) return;
+
+  const wId = sanitizeId(record.id);
+  const path = `platform_withdrawals/${wId}`;
+  const isPaypal = method === 'paypal';
+  const ppRec = record as PaypalWithdrawalRecord;
+  const bkRec = record as BankWithdrawalRecord;
+
+  const payload = {
+    id: wId,
+    ownerUid: sanitizeId(auth.currentUser.uid),
+    method,
+    destination: truncateString(
+      isPaypal ? ppRec.paypalEmail : bkRec.accountNumber,
+      160,
+      'Cuenta registrada'
+    ),
+    bankName: truncateString(
+      isPaypal ? 'PayPal' : bkRec.bankName || 'Banco LAFISE Bancentro',
+      100,
+      'PayPal'
+    ),
+    accountHolder: truncateString(
+      isPaypal ? auth.currentUser.displayName || 'Propietario' : bkRec.accountHolder || 'Propietario',
+      120,
+      'Propietario'
+    ),
+    amountNIO: Math.max(0.01, Math.min(1000000, Number(record.amountNIO) || 0)),
+    amountUSD: Math.max(0.01, Math.min(100000, Number(record.amountUSD) || 0)),
+    dateLabel: truncateString(record.date || new Date().toLocaleDateString('es-NI'), 60, 'Hoy'),
+    status: record.status === 'completado' ? 'completado' : 'solicitado',
+    transactionId: truncateString(record.transactionId || `REQ-${Date.now()}`, 120, `REQ-${Date.now()}`),
+    sourceBreakdown: truncateString(record.sourceBreakdown || 'Ingresos reales verificados', 200, ''),
+    note: truncateString(record.note || '', 300, ''),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    await setDoc(doc(db, 'platform_withdrawals', wId), payload);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+export async function updatePlatformWithdrawalInCloud(
+  withdrawalId: string,
+  status: 'solicitado' | 'completado',
+  transactionId: string,
+  note?: string
+): Promise<void> {
+  if (!auth.currentUser) return;
+  const cleanId = sanitizeId(withdrawalId);
+  const path = `platform_withdrawals/${cleanId}`;
+  try {
+    const snap = await getDoc(doc(db, 'platform_withdrawals', cleanId));
+    if (!snap.exists()) return;
+    await updateDoc(doc(db, 'platform_withdrawals', cleanId), {
+      status,
+      transactionId: truncateString(transactionId, 120, cleanId),
+      note: truncateString(note || 'Transferencia confirmada', 300, ''),
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export function subscribeToPlatformWithdrawals(
+  onWithdrawalsUpdate: (data: {
+    paypal: PaypalWithdrawalRecord[];
+    bank: BankWithdrawalRecord[];
+  }) => void
+): () => void {
+  const q = query(collection(db, 'platform_withdrawals'));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const paypal: PaypalWithdrawalRecord[] = [];
+      const bank: BankWithdrawalRecord[] = [];
+      snapshot.docs.forEach((docSnap) => {
+        const d = docSnap.data();
+        const id = String(d.id || docSnap.id);
+        if (d.method === 'paypal') {
+          if (LEGACY_SIMULATED_PAYPAL_IDS.has(id)) return;
+          paypal.push({
+            id,
+            paypalEmail: String(d.destination || ''),
+            amountNIO: Number(d.amountNIO) || 0,
+            amountUSD: Number(d.amountUSD) || 0,
+            date: String(d.dateLabel || formatTimestampToIso(d.createdAt)),
+            status: d.status === 'completado' ? 'completado' : 'solicitado',
+            transactionId: String(d.transactionId || id),
+            sourceBreakdown: d.sourceBreakdown ? String(d.sourceBreakdown) : undefined,
+            note: d.note ? String(d.note) : undefined
+          });
+        } else if (d.method === 'bank') {
+          if (LEGACY_SIMULATED_BANK_IDS.has(id)) return;
+          bank.push({
+            id,
+            bankName: String(d.bankName || 'Banco Nacional'),
+            accountNumber: String(d.destination || ''),
+            accountHolder: String(d.accountHolder || 'Propietario'),
+            amountNIO: Number(d.amountNIO) || 0,
+            amountUSD: Number(d.amountUSD) || 0,
+            date: String(d.dateLabel || formatTimestampToIso(d.createdAt)),
+            status: d.status === 'completado' ? 'completado' : 'solicitado',
+            transactionId: String(d.transactionId || id),
+            sourceBreakdown: d.sourceBreakdown ? String(d.sourceBreakdown) : undefined,
+            note: d.note ? String(d.note) : undefined
+          });
+        }
+      });
+      onWithdrawalsUpdate({ paypal, bank });
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'platform_withdrawals');
+    }
+  );
 }
 
 export { onAuthStateChanged };

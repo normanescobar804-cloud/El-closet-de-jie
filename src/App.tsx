@@ -91,6 +91,17 @@ import {
   recordAdClickLocal
 } from './utils/advertising';
 import {
+  calculateEarningsSplit,
+  PlatformEarningRecord,
+  PaypalWithdrawalRecord,
+  BankWithdrawalRecord,
+  savePlatformEarning,
+  updatePlatformEarningStatus,
+  getSavedPlatformEarnings,
+  getSavedPaypalWithdrawals,
+  getSavedBankWithdrawals
+} from './utils/monetization';
+import {
   auth,
   onAuthStateChanged,
   ensureCustomerAccountInFirestore,
@@ -110,6 +121,12 @@ import {
   subscribeToUserNotifications,
   subscribeToAllUsers,
   syncFavoritesToCloud,
+  savePlatformConfigToCloud,
+  subscribeToPlatformConfig,
+  savePlatformEarningToCloud,
+  updatePlatformEarningStatusInCloud,
+  subscribeToPlatformEarnings,
+  subscribeToPlatformWithdrawals,
   ADMIN_OWNER_EMAIL
 } from './firebase';
 import { PRODUCT_CATEGORIES } from './data/initialProducts';
@@ -198,6 +215,26 @@ export default function App() {
   const [isFreeSellerPortalOpen, setIsFreeSellerPortalOpen] = useState(false);
   const [isEditStoreModalOpen, setIsEditStoreModalOpen] = useState(false);
   const [isMonetizationHubOpen, setIsMonetizationHubOpen] = useState(false);
+  const [monetizationInitialTab, setMonetizationInitialTab] = useState<
+    | 'overview'
+    | 'config'
+    | 'commission'
+    | 'bank'
+    | 'paypal'
+    | 'ads'
+    | 'memberships'
+    | 'boosts'
+    | 'verification'
+    | 'history'
+    | undefined
+  >(undefined);
+  const [cloudEarnings, setCloudEarnings] = useState<PlatformEarningRecord[]>(getSavedPlatformEarnings);
+  const [cloudPaypalWithdrawals, setCloudPaypalWithdrawals] = useState<PaypalWithdrawalRecord[]>(
+    getSavedPaypalWithdrawals
+  );
+  const [cloudBankWithdrawals, setCloudBankWithdrawals] = useState<BankWithdrawalRecord[]>(
+    getSavedBankWithdrawals
+  );
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
@@ -362,10 +399,20 @@ export default function App() {
       setIsCloudConnected(true);
     });
 
+    const unsubPlatformConfig = subscribeToPlatformConfig((cloudCfg) => {
+      setStoreSettings((prev) => ({
+        ...prev,
+        adSenseConfig: cloudCfg.adSenseConfig,
+        platformPaymentLink: cloudCfg.platformPaymentLink || prev.platformPaymentLink,
+        platformFeePercent: cloudCfg.platformFeePercent ?? prev.platformFeePercent
+      }));
+    });
+
     return () => {
       unsubProducts();
       unsubStores();
       unsubAds();
+      unsubPlatformConfig();
     };
   }, []);
 
@@ -373,6 +420,8 @@ export default function App() {
     let unsubOrders: (() => void) | null = null;
     let unsubNotifs: (() => void) | null = null;
     let unsubUsers: (() => void) | null = null;
+    let unsubEarnings: (() => void) | null = null;
+    let unsubWithdrawals: (() => void) | null = null;
 
     const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
       if (unsubOrders) {
@@ -386,6 +435,14 @@ export default function App() {
       if (unsubUsers) {
         unsubUsers();
         unsubUsers = null;
+      }
+      if (unsubEarnings) {
+        unsubEarnings();
+        unsubEarnings = null;
+      }
+      if (unsubWithdrawals) {
+        unsubWithdrawals();
+        unsubWithdrawals = null;
       }
 
       if (fbUser) {
@@ -435,11 +492,19 @@ export default function App() {
             }
           });
 
+          unsubEarnings = subscribeToPlatformEarnings(fbUser.uid, isOwnerAdmin, (loadedEarnings) => {
+            setCloudEarnings(loadedEarnings);
+          });
+
           if (isOwnerAdmin) {
             unsubUsers = subscribeToAllUsers((loadedUsers) => {
               if (loadedUsers.length > 0) {
                 setCloudUsers(loadedUsers);
               }
+            });
+            unsubWithdrawals = subscribeToPlatformWithdrawals(({ paypal, bank }) => {
+              setCloudPaypalWithdrawals(paypal);
+              setCloudBankWithdrawals(bank);
             });
           }
         } catch (err) {
@@ -453,6 +518,8 @@ export default function App() {
       if (unsubOrders) unsubOrders();
       if (unsubNotifs) unsubNotifs();
       if (unsubUsers) unsubUsers();
+      if (unsubEarnings) unsubEarnings();
+      if (unsubWithdrawals) unsubWithdrawals();
     };
   }, []);
 
@@ -701,6 +768,23 @@ export default function App() {
   const handleSubmitBusinessAd = (newAd: BusinessAd) => {
     setBusinessAds((prev) => [newAd, ...prev]);
     saveBusinessAdToCloud(newAd).catch(() => {});
+    if (newAd.pricePaid > 0) {
+      const earningRec: PlatformEarningRecord = {
+        id: `earn-ad-${newAd.id}`,
+        authorId: auth.currentUser?.uid || currentUser?.uid,
+        source: 'publicidad_anuncio',
+        title: `Anuncio ${newAd.planName} — ${newAd.businessName}`,
+        amountNIO: newAd.pricePaid,
+        storeOrUserName: newAd.businessName,
+        date: new Date().toLocaleDateString('es-NI'),
+        status: newAd.paymentStatus === 'pagado' ? 'liquidado' : 'pendiente_confirmacion',
+        reference: newAd.paymentReference || newAd.id,
+        paymentDestination: 'digital_link',
+        targetId: newAd.id
+      };
+      savePlatformEarning(earningRec);
+      savePlatformEarningToCloud(earningRec).catch(() => {});
+    }
     addToast(
       'info',
       `¡Anuncio de ${newAd.businessName} publicado!`,
@@ -716,6 +800,11 @@ export default function App() {
   const handleUpdateBusinessAd = (updatedAd: BusinessAd) => {
     setBusinessAds((prev) => prev.map((a) => (a.id === updatedAd.id ? updatedAd : a)));
     saveBusinessAdToCloud(updatedAd).catch(() => {});
+    if (updatedAd.pricePaid > 0 && updatedAd.paymentStatus === 'pagado') {
+      const earningId = `earn-ad-${updatedAd.id}`;
+      updatePlatformEarningStatus(earningId, 'liquidado', updatedAd.paymentReference);
+      updatePlatformEarningStatusInCloud(earningId, 'liquidado', updatedAd.paymentReference).catch(() => {});
+    }
     addToast('info', 'Anuncio actualizado', updatedAd.businessName);
   };
 
@@ -754,7 +843,11 @@ export default function App() {
   };
 
   const handleSaveSettings = (newSettings: StoreSettings) => {
+    saveSettings(newSettings);
     setStoreSettings(newSettings);
+    if (auth.currentUser && isOwnerCreator) {
+      savePlatformConfigToCloud(newSettings).catch(() => {});
+    }
     addToast('info', 'Configuración de plataforma guardada');
   };
 
@@ -802,6 +895,12 @@ export default function App() {
         }
       ).catch(() => {});
 
+      if (paymentStatus === 'pagado') {
+        const earningId = `earn-order-${orderId}`;
+        updatePlatformEarningStatus(earningId, 'liquidado');
+        updatePlatformEarningStatusInCloud(earningId, 'liquidado').catch(() => {});
+      }
+
       addToast('info', notif.title, notif.message);
     }
   };
@@ -813,6 +912,24 @@ export default function App() {
     setNotifications((prev) => [notif, ...prev]);
 
     saveOrderToCloud(order).catch(() => {});
+
+    const { platformFee } = calculateEarningsSplit(order.total);
+    if (platformFee > 0 && auth.currentUser) {
+      savePlatformEarningToCloud({
+        id: `earn-order-${order.id}`,
+        authorId: auth.currentUser.uid,
+        source: 'comision_2_porciento',
+        title: `Comisión 2% Venta #${order.id}`,
+        amountNIO: platformFee,
+        storeOrUserName: order.items?.[0]?.sellerName || storeSettings.storeName || 'Tienda Asociada',
+        date: new Date().toLocaleDateString('es-NI'),
+        status: order.paymentStatus === 'pagado' ? 'liquidado' : 'pendiente_confirmacion',
+        reference: order.paymentReference || order.id,
+        paymentDestination: 'digital_link',
+        targetId: order.id
+      }).catch(() => {});
+    }
+
     addToast('info', `¡Pedido #${order.id} registrado!`, 'Notificación de pedido activada en tiempo real');
   };
 
@@ -1815,6 +1932,15 @@ export default function App() {
           </div>
         )}
 
+        {/* Google AdSense In-Feed Catalog Slot */}
+        <div className="mt-8">
+          <GoogleAdSenseSlot
+            config={storeSettings.adSenseConfig}
+            slotType="infeed"
+            onOpenAdvertiseModal={() => setIsAdvertiseModalOpen(true)}
+          />
+        </div>
+
         {/* Recently Viewed Products Section */}
         <RecentlyViewedSection
           products={products}
@@ -2207,6 +2333,11 @@ export default function App() {
           setSelectedSellerFilter(sellerName);
           document.getElementById('catalogo-section')?.scrollIntoView({ behavior: 'smooth' });
         }}
+        onOpenSellerMonetization={(tab) => {
+          setIsFreeSellerPortalOpen(false);
+          setMonetizationInitialTab(tab);
+          setIsMonetizationHubOpen(true);
+        }}
       />
 
       {/* 14b. Edit Clothing Store Modal (Multi-vendor Setup) */}
@@ -2226,17 +2357,31 @@ export default function App() {
       {/* 14c. Platform Monetization & Owner Earnings Hub (2% Commission, PayPal Withdrawals, Ads, Pro/VIP Plans) */}
       <MonetizationHubModal
         isOpen={isMonetizationHubOpen}
-        onClose={() => setIsMonetizationHubOpen(false)}
+        onClose={() => {
+          setIsMonetizationHubOpen(false);
+          setMonetizationInitialTab(undefined);
+        }}
         storeSettings={storeSettings}
         currency={currency}
         products={products}
+        businessAds={businessAds}
         currentUser={currentUser}
+        isOwnerCreator={isOwnerCreator}
+        initialTab={monetizationInitialTab}
+        cloudEarnings={cloudEarnings}
+        cloudPaypalWithdrawals={cloudPaypalWithdrawals}
+        cloudBankWithdrawals={cloudBankWithdrawals}
         onUpdateProduct={handleSaveProduct}
         onUpdateUser={(updatedUser) => {
           setCurrentUser(updatedUser);
           saveUser(updatedUser);
         }}
         onSaveSettings={handleSaveSettings}
+        onUpdateBusinessAd={handleUpdateBusinessAd}
+        onOpenAdvertiseModal={() => {
+          setIsMonetizationHubOpen(false);
+          setIsAdvertiseModalOpen(true);
+        }}
       />
 
       {/* 15. Real-Time Order Notification Center Modal */}

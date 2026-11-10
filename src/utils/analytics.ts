@@ -1,6 +1,6 @@
 import { AnalyticsData, DailyTrafficStat } from '../types';
 
-const ANALYTICS_STORAGE_KEY = 'tienda_jiet_analytics_v3';
+const ANALYTICS_STORAGE_KEY = 'tienda_jiet_analytics_real_v4';
 const SESSION_KEY = 'tienda_jiet_session_visited_today';
 
 // Helper to format date in Spanish
@@ -24,70 +24,43 @@ function getSpanishFriendlyDate(d: Date): { formatted: string; dayName: string }
 }
 
 /**
- * Creates seed traffic data so the owner sees an informative history for the past 14 days
+ * Initializes clean, zero-baseline analytics so only real visits and real clicks are counted.
  */
 function createDefaultAnalytics(): AnalyticsData {
   const today = new Date();
-  const history: DailyTrafficStat[] = [];
-  
-  // Baseline curves for past 14 days
-  const baseCounts = [38, 45, 52, 49, 63, 71, 58, 64, 82, 95, 88, 104, 118, 126];
-  
-  let totalHistoricViews = 1840;
-  let totalHistoricVisitors = 1120;
-
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    const dateStr = formatDateStr(d);
-    const { formatted, dayName } = getSpanishFriendlyDate(d);
-    const views = baseCounts[13 - i] + Math.floor(Math.random() * 8);
-    const unique = Math.round(views * 0.72);
-    const whatsappClicks = Math.round(views * 0.18);
-
-    history.push({
-      date: dateStr,
-      formattedDate: formatted,
-      dayName,
-      pageViews: views,
-      uniqueVisitors: unique,
-      whatsappClicks
-    });
-  }
-
   const todayStr = formatDateStr(today);
-  const todayStat = history.find(h => h.date === todayStr);
-  const yesterdayDate = new Date(today);
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterdayStr = formatDateStr(yesterdayDate);
-  const yesterdayStat = history.find(h => h.date === yesterdayStr);
+  const { formatted, dayName } = getSpanishFriendlyDate(today);
 
   return {
-    totalViews: totalHistoricViews,
-    totalUniqueVisitors: totalHistoricVisitors,
-    todayViews: todayStat ? todayStat.pageViews : 126,
-    todayUniqueVisitors: todayStat ? todayStat.uniqueVisitors : 91,
-    yesterdayViews: yesterdayStat ? yesterdayStat.pageViews : 118,
-    whatsappInquiriesClicks: 215,
+    totalViews: 0,
+    totalUniqueVisitors: 0,
+    todayViews: 0,
+    todayUniqueVisitors: 0,
+    yesterdayViews: 0,
+    whatsappInquiriesClicks: 0,
     deviceBreakdown: {
-      mobile: 84, // 84% from smartphones in Nicaragua
-      desktop: 16
+      mobile: 0,
+      desktop: 0
     },
     referrerBreakdown: {
-      direct: 35,
-      whatsapp: 42,
-      facebook: 12,
-      instagram: 7,
-      tiktok: 3,
-      other: 1
+      direct: 0,
+      whatsapp: 0,
+      facebook: 0,
+      instagram: 0,
+      tiktok: 0,
+      other: 0
     },
-    hourlyBreakdown: {
-      '00': 4, '01': 2, '02': 1, '03': 0, '04': 1, '05': 5,
-      '06': 14, '07': 28, '08': 42, '09': 68, '10': 85, '11': 92,
-      '12': 78, '13': 84, '14': 98, '15': 110, '16': 125, '17': 140,
-      '18': 155, '19': 172, '20': 160, '21': 130, '22': 85, '23': 32
-    },
-    dailyHistory: history,
+    hourlyBreakdown: {},
+    dailyHistory: [
+      {
+        date: todayStr,
+        formattedDate: formatted,
+        dayName,
+        pageViews: 0,
+        uniqueVisitors: 0,
+        whatsappClicks: 0
+      }
+    ],
     lastUpdated: new Date().toISOString()
   };
 }
@@ -254,7 +227,7 @@ export function recordWhatsAppAction(): void {
  * Session duration and real-time visit tracking
  */
 const SESSION_START_KEY = 'tienda_jiet_session_start_time';
-const TOTAL_VISIT_SECONDS_KEY = 'tienda_jiet_accumulated_visit_seconds';
+const TOTAL_VISIT_SECONDS_KEY = 'tienda_jiet_accumulated_visit_seconds_real_v2';
 
 export function initSessionTimer(): void {
   try {
@@ -278,21 +251,21 @@ export function getCurrentSessionDurationSeconds(): number {
 export function recordHeartbeatVisit(seconds: number = 10): number {
   try {
     const raw = localStorage.getItem(TOTAL_VISIT_SECONDS_KEY);
-    const prev = raw ? Number(raw) : 18400; // baseline seconds
+    const prev = raw ? Number(raw) : 0;
     const updated = prev + seconds;
     localStorage.setItem(TOTAL_VISIT_SECONDS_KEY, String(updated));
     return updated;
   } catch {
-    return 18400;
+    return 0;
   }
 }
 
 export function getTotalAccumulatedVisitSeconds(): number {
   try {
     const raw = localStorage.getItem(TOTAL_VISIT_SECONDS_KEY);
-    return raw ? Number(raw) : 18400;
+    return raw ? Number(raw) : 0;
   } catch {
-    return 18400;
+    return 0;
   }
 }
 

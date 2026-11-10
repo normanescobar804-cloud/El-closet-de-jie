@@ -171,14 +171,24 @@ export const STORE_VERIFICATION_PLAN: MonetizationPlan = {
 
 export interface PlatformEarningRecord {
   id: string;
-  source: 'comision_2_porciento' | 'comision_3_porciento' | 'plan_tienda_pro' | 'plan_boutique_vip' | 'destacado_producto' | 'verificacion_tienda' | 'publicidad_anuncio' | 'ingresos_adsense';
+  authorId?: string;
+  source:
+    | 'comision_2_porciento'
+    | 'comision_3_porciento'
+    | 'plan_tienda_pro'
+    | 'plan_boutique_vip'
+    | 'destacado_producto'
+    | 'verificacion_tienda'
+    | 'publicidad_anuncio'
+    | 'ingresos_adsense';
   title: string;
   amountNIO: number;
   storeOrUserName: string;
   date: string;
-  status: 'liquidado' | 'pendiente_confirmacion';
+  status: 'liquidado' | 'pendiente_confirmacion' | 'rechazado';
   reference?: string;
-  paymentDestination: 'billetera_movil' | 'cuenta_lafise' | 'paypal';
+  paymentDestination: 'billetera_movil' | 'cuenta_lafise' | 'paypal' | 'digital_link';
+  targetId?: string;
 }
 
 export interface PaypalWithdrawalRecord {
@@ -187,7 +197,7 @@ export interface PaypalWithdrawalRecord {
   amountNIO: number;
   amountUSD: number;
   date: string;
-  status: 'completado' | 'procesando';
+  status: 'completado' | 'solicitado';
   transactionId: string;
   sourceBreakdown?: string;
   note?: string;
@@ -201,7 +211,7 @@ export interface BankWithdrawalRecord {
   amountNIO: number;
   amountUSD: number;
   date: string;
-  status: 'completado' | 'procesando';
+  status: 'completado' | 'solicitado';
   transactionId: string;
   sourceBreakdown?: string;
   note?: string;
@@ -211,38 +221,67 @@ const STORAGE_KEY_EARNINGS = 'tienda_jiet_platform_earnings_v3';
 const STORAGE_KEY_PAYPAL_WITHDRAWALS = 'tienda_jiet_paypal_withdrawals_v1';
 const STORAGE_KEY_BANK_WITHDRAWALS = 'tienda_jiet_bank_withdrawals_v1';
 
-export const INITIAL_BANK_WITHDRAWALS: BankWithdrawalRecord[] = [
-  {
-    id: 'bank-wd-1',
-    bankName: 'Banco LAFISE Bancentro',
-    accountNumber: '134082049',
-    accountHolder: 'Administración El Clóset de Jié',
-    amountNIO: 1250,
-    amountUSD: 34.25,
-    date: 'Hace 3 días',
-    status: 'completado',
-    transactionId: 'LAFISE-TRANS-892102',
-    sourceBreakdown: 'Comisiones de ventas y planes Pro',
-    note: 'Transferencia ACH nacional procesada con éxito'
-  }
-];
+// Legacy AI/demo IDs and store names to automatically purge from localStorage/Firestore caches
+export const LEGACY_SIMULATED_EARNING_IDS = new Set([
+  'earn-1',
+  'earn-2',
+  'earn-3',
+  'earn-4',
+  'earn-5',
+  'earn-6'
+]);
+
+export const LEGACY_SIMULATED_PAYPAL_IDS = new Set(['pp-with-1']);
+export const LEGACY_SIMULATED_BANK_IDS = new Set(['bank-wd-1']);
+
+export const LEGACY_SIMULATED_MONETIZATION_NAMES = new Set([
+  'boutique san judas managua',
+  'calzado artesanal masaya',
+  'moda urbana estelí',
+  'moda urbana esteli',
+  'red de anuncios google',
+  'clóset infantil masaya',
+  'closet infantil masaya',
+  'chic & vintage león',
+  'chic & vintage leon',
+  'negocio patrocinado local'
+]);
+
+export function isLegacySimulatedEarning(record: PlatformEarningRecord): boolean {
+  if (!record || !record.id) return true;
+  if (LEGACY_SIMULATED_EARNING_IDS.has(record.id)) return true;
+  const storeLower = (record.storeOrUserName || '').trim().toLowerCase();
+  if (storeLower && LEGACY_SIMULATED_MONETIZATION_NAMES.has(storeLower)) return true;
+  const titleLower = (record.title || '').trim().toLowerCase();
+  if (titleLower === 'pago de banners adsense (3,500 visitas)') return true;
+  if (titleLower === 'banner patrocinado joyería & accesorios') return true;
+  return false;
+}
+
+export const INITIAL_BANK_WITHDRAWALS: BankWithdrawalRecord[] = [];
 
 export function getSavedBankWithdrawals(): BankWithdrawalRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_BANK_WITHDRAWALS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY_BANK_WITHDRAWALS, JSON.stringify(INITIAL_BANK_WITHDRAWALS));
-      return INITIAL_BANK_WITHDRAWALS;
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const cleaned = parsed.filter(
+      (w: BankWithdrawalRecord) => w && !LEGACY_SIMULATED_BANK_IDS.has(w.id)
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY_BANK_WITHDRAWALS, JSON.stringify(cleaned));
     }
-    return JSON.parse(raw);
+    return cleaned;
   } catch {
-    return INITIAL_BANK_WITHDRAWALS;
+    return [];
   }
 }
 
 export function saveBankWithdrawal(record: BankWithdrawalRecord): void {
   try {
-    const list = getSavedBankWithdrawals();
+    if (LEGACY_SIMULATED_BANK_IDS.has(record.id)) return;
+    const list = getSavedBankWithdrawals().filter((w) => w.id !== record.id);
     const updated = [record, ...list];
     localStorage.setItem(STORAGE_KEY_BANK_WITHDRAWALS, JSON.stringify(updated));
   } catch (err) {
@@ -250,104 +289,51 @@ export function saveBankWithdrawal(record: BankWithdrawalRecord): void {
   }
 }
 
-export const INITIAL_PLATFORM_EARNINGS: PlatformEarningRecord[] = [
-  {
-    id: 'earn-1',
-    source: 'comision_2_porciento',
-    title: 'Comisión 2% Pedido #JIET-94821',
-    amountNIO: 35,
-    storeOrUserName: 'Boutique San Judas Managua',
-    date: 'Hoy, hace 2 horas',
-    status: 'liquidado',
-    reference: 'BILLETERA-58898311-9482',
-    paymentDestination: 'billetera_movil'
-  },
-  {
-    id: 'earn-2',
-    source: 'publicidad_anuncio',
-    title: 'Publicidad Patrocinada Negocio Local',
-    amountNIO: 650,
-    storeOrUserName: 'Calzado Artesanal Masaya',
-    date: 'Ayer',
-    status: 'liquidado',
-    reference: 'PAYPAL-REC-6500',
-    paymentDestination: 'paypal'
-  },
-  {
-    id: 'earn-3',
-    source: 'plan_tienda_pro',
-    title: 'Suscripción Mensual Tienda Pro',
-    amountNIO: 150,
-    storeOrUserName: 'Moda Urbana Estelí',
-    date: 'Ayer',
-    status: 'liquidado',
-    reference: 'LAFISE-134082049-3891',
-    paymentDestination: 'cuenta_lafise'
-  },
-  {
-    id: 'earn-4',
-    source: 'ingresos_adsense',
-    title: 'Ingresos por Banners & Anuncios Web (AdSense)',
-    amountNIO: 280,
-    storeOrUserName: 'Red de Anuncios Google',
-    date: 'Esta semana',
-    status: 'liquidado',
-    reference: 'ADS-GOOGLE-PUB-771',
-    paymentDestination: 'paypal'
-  },
-  {
-    id: 'earn-5',
-    source: 'destacado_producto',
-    title: 'Impulso Semanal (7 Días) de Prenda',
-    amountNIO: 70,
-    storeOrUserName: 'Clóset Infantil Masaya',
-    date: 'Hace 2 días',
-    status: 'liquidado',
-    reference: 'BILLETERA-58898311-1029',
-    paymentDestination: 'billetera_movil'
-  },
-  {
-    id: 'earn-6',
-    source: 'verificacion_tienda',
-    title: 'Sello de Tienda Oficial Verificada',
-    amountNIO: 75,
-    storeOrUserName: 'Chic & Vintage León',
-    date: 'Hace 3 días',
-    status: 'liquidado',
-    reference: 'LAFISE-134082049-7712',
-    paymentDestination: 'cuenta_lafise'
-  }
-];
+export function updateBankWithdrawalStatus(
+  id: string,
+  status: 'solicitado' | 'completado',
+  transactionId?: string
+): BankWithdrawalRecord[] {
+  const current = getSavedBankWithdrawals();
+  const updated = current.map((w) =>
+    w.id === id
+      ? {
+          ...w,
+          status,
+          transactionId: transactionId?.trim() ? transactionId.trim() : w.transactionId
+        }
+      : w
+  );
+  localStorage.setItem(STORAGE_KEY_BANK_WITHDRAWALS, JSON.stringify(updated));
+  return updated;
+}
 
-export const INITIAL_PAYPAL_WITHDRAWALS: PaypalWithdrawalRecord[] = [
-  {
-    id: 'pp-with-1',
-    paypalEmail: 'normanescobar804@gmail.com',
-    amountNIO: 736,
-    amountUSD: 20.0,
-    date: 'Ayer, 04:30 PM',
-    status: 'completado',
-    transactionId: 'PP-9482910482',
-    sourceBreakdown: 'Comisiones 2% y Publicidad de Negocios'
-  }
-];
+export const INITIAL_PLATFORM_EARNINGS: PlatformEarningRecord[] = [];
+
+export const INITIAL_PAYPAL_WITHDRAWALS: PaypalWithdrawalRecord[] = [];
 
 export function getSavedPlatformEarnings(): PlatformEarningRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_EARNINGS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY_EARNINGS, JSON.stringify(INITIAL_PLATFORM_EARNINGS));
-      return INITIAL_PLATFORM_EARNINGS;
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const cleaned = parsed.filter(
+      (e: PlatformEarningRecord) => !isLegacySimulatedEarning(e)
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY_EARNINGS, JSON.stringify(cleaned));
     }
-    return JSON.parse(raw);
+    return cleaned;
   } catch {
-    return INITIAL_PLATFORM_EARNINGS;
+    return [];
   }
 }
 
 export function savePlatformEarning(record: PlatformEarningRecord): void {
   try {
-    const list = getSavedPlatformEarnings();
+    if (isLegacySimulatedEarning(record)) return;
+    const list = getSavedPlatformEarnings().filter((e) => e.id !== record.id);
     const updated = [record, ...list];
     localStorage.setItem(STORAGE_KEY_EARNINGS, JSON.stringify(updated));
   } catch (err) {
@@ -355,25 +341,88 @@ export function savePlatformEarning(record: PlatformEarningRecord): void {
   }
 }
 
+export function updatePlatformEarningStatus(
+  idOrTargetId: string,
+  status: 'liquidado' | 'pendiente_confirmacion' | 'rechazado',
+  reference?: string
+): PlatformEarningRecord[] {
+  const list = getSavedPlatformEarnings();
+  const updated = list.map((e) =>
+    e.id === idOrTargetId || e.targetId === idOrTargetId || e.reference === idOrTargetId
+      ? {
+          ...e,
+          status,
+          reference: reference?.trim() ? reference.trim() : e.reference
+        }
+      : e
+  );
+  localStorage.setItem(STORAGE_KEY_EARNINGS, JSON.stringify(updated));
+  return updated;
+}
+
+export function saveAllPlatformEarnings(records: PlatformEarningRecord[]): PlatformEarningRecord[] {
+  const cleaned = records.filter((e) => !isLegacySimulatedEarning(e));
+  localStorage.setItem(STORAGE_KEY_EARNINGS, JSON.stringify(cleaned));
+  return cleaned;
+}
+
 export function getSavedPaypalWithdrawals(): PaypalWithdrawalRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PAYPAL_WITHDRAWALS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY_PAYPAL_WITHDRAWALS, JSON.stringify(INITIAL_PAYPAL_WITHDRAWALS));
-      return INITIAL_PAYPAL_WITHDRAWALS;
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const cleaned = parsed.filter(
+      (w: PaypalWithdrawalRecord) => w && !LEGACY_SIMULATED_PAYPAL_IDS.has(w.id)
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY_PAYPAL_WITHDRAWALS, JSON.stringify(cleaned));
     }
-    return JSON.parse(raw);
+    return cleaned;
   } catch {
-    return INITIAL_PAYPAL_WITHDRAWALS;
+    return [];
   }
 }
 
 export function savePaypalWithdrawal(record: PaypalWithdrawalRecord): void {
   try {
-    const list = getSavedPaypalWithdrawals();
+    if (LEGACY_SIMULATED_PAYPAL_IDS.has(record.id)) return;
+    const list = getSavedPaypalWithdrawals().filter((w) => w.id !== record.id);
     const updated = [record, ...list];
     localStorage.setItem(STORAGE_KEY_PAYPAL_WITHDRAWALS, JSON.stringify(updated));
   } catch (err) {
     console.error('Error saving paypal withdrawal:', err);
   }
 }
+
+export function updatePaypalWithdrawalStatus(
+  id: string,
+  status: 'solicitado' | 'completado',
+  transactionId?: string
+): PaypalWithdrawalRecord[] {
+  const current = getSavedPaypalWithdrawals();
+  const updated = current.map((w) =>
+    w.id === id
+      ? {
+          ...w,
+          status,
+          transactionId: transactionId?.trim() ? transactionId.trim() : w.transactionId
+        }
+      : w
+  );
+  localStorage.setItem(STORAGE_KEY_PAYPAL_WITHDRAWALS, JSON.stringify(updated));
+  return updated;
+}
+
+export function saveAllPaypalWithdrawals(records: PaypalWithdrawalRecord[]): PaypalWithdrawalRecord[] {
+  const cleaned = records.filter((w) => w && !LEGACY_SIMULATED_PAYPAL_IDS.has(w.id));
+  localStorage.setItem(STORAGE_KEY_PAYPAL_WITHDRAWALS, JSON.stringify(cleaned));
+  return cleaned;
+}
+
+export function saveAllBankWithdrawals(records: BankWithdrawalRecord[]): BankWithdrawalRecord[] {
+  const cleaned = records.filter((w) => w && !LEGACY_SIMULATED_BANK_IDS.has(w.id));
+  localStorage.setItem(STORAGE_KEY_BANK_WITHDRAWALS, JSON.stringify(cleaned));
+  return cleaned;
+}
+

@@ -42,6 +42,7 @@ interface FreeSellerPortalModalProps {
   onUpdateUser: (user: UserAccount) => void;
   onStoreRegistered?: (store: RegisteredStore) => void;
   onFilterBySeller?: (sellerName: string) => void;
+  onOpenSellerMonetization?: (tab: 'memberships' | 'boosts' | 'verification') => void;
 }
 
 export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
@@ -58,7 +59,8 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
   onGoogleLogin,
   onUpdateUser,
   onStoreRegistered,
-  onFilterBySeller
+  onFilterBySeller,
+  onOpenSellerMonetization
 }) => {
   const [activeTab, setActiveTab] = useState<'publish' | 'my_items' | 'community_stores'>('publish');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -402,6 +404,19 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
               <Globe className="w-4 h-4" />
               <span>Tiendas de la Comunidad ({communityStores.length})</span>
             </button>
+            {onOpenSellerMonetization && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenSellerMonetization('memberships');
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300"
+              >
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span>Planes Pro & Impulsos</span>
+              </button>
+            )}
           </div>
 
           {/* Cloud Status / Google Sync Button */}

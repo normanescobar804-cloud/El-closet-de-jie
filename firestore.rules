@@ -325,6 +325,105 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
+    function isValidPlatformPublicConfig(data) {
+      return data.keys().hasAll([
+          'id', 'adSenseEnabled', 'adSensePublisherId', 'adSenseHeaderSlotId',
+          'adSenseInFeedSlotId', 'adSenseFooterSlotId', 'adSenseAutoAds',
+          'platformPaymentLink', 'platformFeePercent', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'adSenseEnabled', 'adSensePublisherId', 'adSenseHeaderSlotId',
+          'adSenseInFeedSlotId', 'adSenseFooterSlotId', 'adSenseAutoAds',
+          'platformPaymentLink', 'platformFeePercent', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.id == 'public' &&
+        data.adSenseEnabled is bool &&
+        data.adSensePublisherId is string && data.adSensePublisherId.size() >= 0 && data.adSensePublisherId.size() <= 64 &&
+        data.adSenseHeaderSlotId is string && data.adSenseHeaderSlotId.size() >= 0 && data.adSenseHeaderSlotId.size() <= 64 &&
+        data.adSenseInFeedSlotId is string && data.adSenseInFeedSlotId.size() >= 0 && data.adSenseInFeedSlotId.size() <= 64 &&
+        data.adSenseFooterSlotId is string && data.adSenseFooterSlotId.size() >= 0 && data.adSenseFooterSlotId.size() <= 64 &&
+        data.adSenseAutoAds is bool &&
+        data.platformPaymentLink is string && data.platformPaymentLink.size() >= 0 && data.platformPaymentLink.size() <= 300 &&
+        data.platformFeePercent is number && data.platformFeePercent >= 0 && data.platformFeePercent <= 50 &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPlatformEarning(data) {
+      return data.keys().hasAll([
+          'id', 'authorId', 'source', 'title', 'amountNIO', 'storeOrUserName',
+          'dateLabel', 'status', 'reference', 'paymentDestination', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'authorId', 'source', 'title', 'amountNIO', 'storeOrUserName',
+          'dateLabel', 'status', 'reference', 'paymentDestination', 'targetId', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.authorId) &&
+        data.source is string && data.source.size() >= 10 && data.source.size() <= 40 &&
+        (
+          data.source == 'comision_2_porciento' ||
+          data.source == 'comision_3_porciento' ||
+          data.source == 'plan_tienda_pro' ||
+          data.source == 'plan_boutique_vip' ||
+          data.source == 'destacado_producto' ||
+          data.source == 'verificacion_tienda' ||
+          data.source == 'publicidad_anuncio' ||
+          data.source == 'ingresos_adsense'
+        ) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 180 &&
+        data.amountNIO is number && data.amountNIO >= 0 && data.amountNIO <= 1000000 &&
+        data.storeOrUserName is string && data.storeOrUserName.size() >= 1 && data.storeOrUserName.size() <= 120 &&
+        data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 60 &&
+        data.status is string && data.status.size() >= 9 && data.status.size() <= 25 &&
+        (
+          data.status == 'pendiente_confirmacion' ||
+          data.status == 'liquidado' ||
+          data.status == 'rechazado'
+        ) &&
+        data.reference is string && data.reference.size() >= 0 && data.reference.size() <= 120 &&
+        data.paymentDestination is string && data.paymentDestination.size() >= 6 && data.paymentDestination.size() <= 25 &&
+        (
+          data.paymentDestination == 'billetera_movil' ||
+          data.paymentDestination == 'cuenta_lafise' ||
+          data.paymentDestination == 'paypal' ||
+          data.paymentDestination == 'digital_link'
+        ) &&
+        (!('targetId' in data) || (data.targetId is string && data.targetId.size() >= 0 && data.targetId.size() <= 128)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPlatformWithdrawal(data) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'method', 'destination', 'bankName', 'accountHolder',
+          'amountNIO', 'amountUSD', 'dateLabel', 'status', 'transactionId',
+          'sourceBreakdown', 'note', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerUid', 'method', 'destination', 'bankName', 'accountHolder',
+          'amountNIO', 'amountUSD', 'dateLabel', 'status', 'transactionId',
+          'sourceBreakdown', 'note', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerUid) &&
+        data.method is string && data.method.size() >= 4 && data.method.size() <= 10 &&
+        (data.method == 'paypal' || data.method == 'bank') &&
+        data.destination is string && data.destination.size() >= 1 && data.destination.size() <= 160 &&
+        data.bankName is string && data.bankName.size() >= 1 && data.bankName.size() <= 100 &&
+        data.accountHolder is string && data.accountHolder.size() >= 1 && data.accountHolder.size() <= 120 &&
+        data.amountNIO is number && data.amountNIO > 0 && data.amountNIO <= 1000000 &&
+        data.amountUSD is number && data.amountUSD > 0 && data.amountUSD <= 100000 &&
+        data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 60 &&
+        data.status is string && data.status.size() >= 9 && data.status.size() <= 15 &&
+        (data.status == 'solicitado' || data.status == 'completado') &&
+        data.transactionId is string && data.transactionId.size() >= 1 && data.transactionId.size() <= 120 &&
+        data.sourceBreakdown is string && data.sourceBreakdown.size() >= 0 && data.sourceBreakdown.size() <= 200 &&
+        data.note is string && data.note.size() >= 0 && data.note.size() <= 300 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
     // =========================================================================
     // Collection 1: /admins/{adminId}
     // =========================================================================
@@ -676,6 +775,107 @@ service cloud.firestore {
         );
 
       allow delete: if isVerifiedUser() && isValidId(notificationId) && isAdmin();
+    }
+
+    // =========================================================================
+    // Collection 6: /platform_config/{configId} (Public Google AdSense & Payment Link)
+    // =========================================================================
+    match /platform_config/{configId} {
+      allow get: if isValidId(configId) && configId == 'public';
+      allow list: if false;
+
+      allow create: if isVerifiedUser() &&
+        isAdmin() &&
+        isValidId(configId) &&
+        configId == 'public' &&
+        isValidPlatformPublicConfig(incoming()) &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isAdmin() &&
+        isValidId(configId) &&
+        configId == 'public' &&
+        isValidPlatformPublicConfig(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'adSenseEnabled', 'adSensePublisherId', 'adSenseHeaderSlotId',
+          'adSenseInFeedSlotId', 'adSenseFooterSlotId', 'adSenseAutoAds',
+          'platformPaymentLink', 'platformFeePercent', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // =========================================================================
+    // Collection 7: /platform_earnings/{earningId} (Real Monetization Ledger)
+    // =========================================================================
+    match /platform_earnings/{earningId} {
+      allow get: if isSignedIn() &&
+        isValidId(earningId) &&
+        (existing().authorId == request.auth.uid || isAdmin());
+
+      allow list: if isSignedIn() &&
+        (resource.data.authorId == request.auth.uid || isAdmin());
+
+      allow create: if isVerifiedUser() &&
+        isValidId(earningId) &&
+        isValidPlatformEarning(incoming()) &&
+        incoming().id == earningId &&
+        incoming().authorId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            incoming().status == 'pendiente_confirmacion' &&
+            exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          )
+        );
+
+      allow update: if isVerifiedUser() &&
+        isAdmin() &&
+        isValidId(earningId) &&
+        isValidPlatformEarning(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().authorId == existing().authorId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'reference', 'amountNIO', 'title', 'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser() && isAdmin() && isValidId(earningId);
+    }
+
+    // =========================================================================
+    // Collection 8: /platform_withdrawals/{withdrawalId} (Owner Payout Ledger)
+    // =========================================================================
+    match /platform_withdrawals/{withdrawalId} {
+      allow get: if isSignedIn() && isValidId(withdrawalId) && isAdmin();
+      allow list: if isSignedIn() && isAdmin();
+
+      allow create: if isVerifiedUser() &&
+        isAdmin() &&
+        isValidId(withdrawalId) &&
+        isValidPlatformWithdrawal(incoming()) &&
+        incoming().id == withdrawalId &&
+        incoming().ownerUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isAdmin() &&
+        isValidId(withdrawalId) &&
+        isValidPlatformWithdrawal(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'transactionId', 'note', 'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser() && isAdmin() && isValidId(withdrawalId);
     }
   }
 }

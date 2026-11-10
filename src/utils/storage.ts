@@ -121,7 +121,7 @@ export function getSavedSettings(): StoreSettings {
   }
 
   // 💰 Enforce App Owner Platform Fee & Monetization Settings
-  merged.platformFeePercent = typeof saved.platformFeePercent === 'number' ? saved.platformFeePercent : 3;
+  merged.platformFeePercent = typeof saved.platformFeePercent === 'number' ? saved.platformFeePercent : 2;
   merged.platformOwnerWallet = saved.platformOwnerWallet !== undefined ? saved.platformOwnerWallet : '+505 58898311';
   merged.platformOwnerAccount = saved.platformOwnerAccount !== undefined ? saved.platformOwnerAccount : '134082049';
   merged.platformOwnerBank = saved.platformOwnerBank || 'LAFISE';
@@ -130,6 +130,16 @@ export function getSavedSettings(): StoreSettings {
   merged.platformPaymentLink = saved.platformPaymentLink || 'https://paypal.me/elclosetdejie';
   merged.platformBusinessName = saved.platformBusinessName || 'El Clóset de Jié Oficial';
   merged.disableHighResCatalogImages = Boolean(saved.disableHighResCatalogImages);
+
+  // Strip legacy placeholder AdSense IDs
+  if (merged.adSenseConfig) {
+    const cleanedAdSense = { ...merged.adSenseConfig };
+    if (cleanedAdSense.publisherId === 'ca-pub-0000000000000000') cleanedAdSense.publisherId = '';
+    if (cleanedAdSense.headerSlotId === '1029384756') cleanedAdSense.headerSlotId = '';
+    if (cleanedAdSense.inFeedSlotId === '5647382910') cleanedAdSense.inFeedSlotId = '';
+    if (cleanedAdSense.footerSlotId === '9081726354') cleanedAdSense.footerSlotId = '';
+    merged.adSenseConfig = cleanedAdSense;
+  }
 
   // Enforce requested owner security key: strictly jordan#$29 and purge legacy 1234
   if (!saved.adminPin || saved.adminPin === '1234' || saved.adminPin.length === 4) {
