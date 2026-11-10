@@ -18,7 +18,7 @@ import {
   UserPlus,
   Globe
 } from 'lucide-react';
-import { BusinessAd, CategoryFilter, CurrencyType, Product, StoreSettings, UserAccount } from '../types';
+import { BusinessAd, CategoryFilter, CurrencyType, Product, RegisteredStore, StoreSettings, UserAccount } from '../types';
 import { formatCurrency } from '../utils/storage';
 import { SearchAutocomplete } from './SearchAutocomplete';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -36,6 +36,7 @@ interface HeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   products?: Product[];
+  registeredStores?: RegisteredStore[];
   categories?: CategoryFilter[];
   businessAds?: BusinessAd[];
   catalogSection?: 'todas' | 'ropa' | 'peluches' | 'ofertas' | 'novedades';
@@ -77,6 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   onSearchChange,
   products = [],
+  registeredStores = [],
   categories = [],
   businessAds = [],
   catalogSection = 'todas',
@@ -180,14 +182,16 @@ export const Header: React.FC<HeaderProps> = ({
               searchQuery={searchQuery}
               onSearchChange={onSearchChange}
               products={products}
+              registeredStores={registeredStores}
               categories={categories}
               storeSettings={storeSettings}
               businessAds={businessAds}
               currency={currency}
-              placeholder="Buscar productos, categorías, tiendas, marcas..."
+              placeholder="Buscar productos, tiendas registradas, categorías..."
               onSelectProduct={onSelectProduct}
               onSelectCategory={onSelectCategory}
               onSelectSeller={onSelectSeller}
+              onOpenStoresDirectory={onOpenStoresDirectory}
             />
           </div>
 
@@ -435,14 +439,16 @@ export const Header: React.FC<HeaderProps> = ({
             searchQuery={searchQuery}
             onSearchChange={onSearchChange}
             products={products}
+            registeredStores={registeredStores}
             categories={categories}
             storeSettings={storeSettings}
             businessAds={businessAds}
             currency={currency}
-            placeholder="Buscar ropa, marcas, peluches, tiendas..."
+            placeholder="Buscar productos o tiendas registradas..."
             onSelectProduct={onSelectProduct}
             onSelectCategory={onSelectCategory}
             onSelectSeller={onSelectSeller}
+            onOpenStoresDirectory={onOpenStoresDirectory}
           />
         </div>
       </div>

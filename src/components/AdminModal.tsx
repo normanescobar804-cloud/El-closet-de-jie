@@ -3209,14 +3209,14 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                       type="button"
                       id="btn-reset-factory-products"
                       onClick={() => {
-                        if (confirm('¿Deseas restaurar los productos iniciales de muestra?')) {
+                        if (confirm('¿Deseas limpiar los productos almacenados localmente?')) {
                           onResetProducts();
                         }
                       }}
                       className="py-3 px-4 border border-stone-300 hover:bg-stone-100 text-stone-700 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      <span>Restablecer Prendas de Muestra</span>
+                      <span>Limpiar Catálogo Local</span>
                     </button>
                   </div>
                 </form>

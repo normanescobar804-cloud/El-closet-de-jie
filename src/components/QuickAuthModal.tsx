@@ -1703,7 +1703,7 @@ export const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
                           id={nameInputId}
                           type="text"
                           required
-                          placeholder="Ej: Carolina Rojas"
+                          placeholder="Ej: María José Escobar"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-900 focus:outline-none focus:border-violet-500 focus:bg-white"
@@ -2007,19 +2007,6 @@ export const QuickAuthModal: React.FC<QuickAuthModalProps> = ({
                         </button>
                       </div>
                     )}
-
-                    {/* Fast guest login test */}
-                    <div className="text-center pt-1">
-                      <button
-                        type="button"
-                        id="btn-fast-guest-login"
-                        onClick={() => handleQuickDemoLogin('Carolina Rojas')}
-                        className="w-full py-2 px-3 rounded-xl border border-dashed border-stone-300 text-stone-700 hover:bg-stone-50 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                        <span>Acceso Rápido de Prueba (Demo con pedidos)</span>
-                      </button>
-                    </div>
 
                     <div className="text-center pt-1">
                       <p className="text-xs text-stone-500">

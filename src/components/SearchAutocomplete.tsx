@@ -17,14 +17,15 @@ import {
   AlertCircle,
   Check
 } from 'lucide-react';
-import { BusinessAd, CategoryFilter, CurrencyType, Product, StoreSettings } from '../types';
-import { formatCurrency } from '../utils/storage';
+import { BusinessAd, CategoryFilter, CurrencyType, Product, RegisteredStore, StoreSettings } from '../types';
+import { formatCurrency, LEGACY_AI_STORE_NAMES } from '../utils/storage';
 import { useVoiceSearch } from '../hooks/useVoiceSearch';
 
 export interface SearchAutocompleteProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   products: Product[];
+  registeredStores?: RegisteredStore[];
   categories: CategoryFilter[];
   storeSettings: StoreSettings;
   businessAds?: BusinessAd[];
@@ -37,6 +38,7 @@ export interface SearchAutocompleteProps {
   onSelectProduct?: (product: Product) => void;
   onSelectCategory?: (category: CategoryFilter) => void;
   onSelectSeller?: (sellerName: string) => void;
+  onOpenStoresDirectory?: () => void;
   onPerformSearch?: (query: string) => void;
 }
 
@@ -96,11 +98,12 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   searchQuery,
   onSearchChange,
   products,
+  registeredStores = [],
   categories,
   storeSettings,
   businessAds = [],
   currency,
-  placeholder = 'Buscar productos, tiendas, ropa de niños, peluches...',
+  placeholder = 'Buscar productos, tiendas registradas, categorías...',
   className = '',
   inputClassName = '',
   id = 'search-input',
@@ -108,6 +111,7 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
   onSelectProduct,
   onSelectCategory,
   onSelectSeller,
+  onOpenStoresDirectory,
   onPerformSearch
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -171,61 +175,96 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
       }));
   }, [categories, products, cleanQuery]);
 
-  // 2. Compute Store / Seller Suggestions
+  // Total real-time stores count (excluding any legacy AI stores)
+  const realStoresCount = useMemo(() => {
+    const names = new Set<string>();
+    registeredStores.forEach((s) => {
+      const n = s.storeName?.trim().toLowerCase();
+      if (n && !LEGACY_AI_STORE_NAMES.has(n)) names.add(n);
+    });
+    products.forEach((p) => {
+      const n = p.sellerName?.trim().toLowerCase();
+      if (n && !LEGACY_AI_STORE_NAMES.has(n)) names.add(n);
+    });
+    return names.size;
+  }, [registeredStores, products]);
+
+  // 2. Compute Store / Seller Suggestions (Solo tiendas registradas en tiempo real)
   const matchingStores = useMemo<StoreSuggestion[]>(() => {
     if (!cleanQuery) return [];
 
     const storesMap = new Map<string, StoreSuggestion>();
 
-    // Main official store
-    if (storeSettings.storeName.toLowerCase().includes(cleanQuery)) {
-      storesMap.set(storeSettings.storeName.toLowerCase(), {
-        type: 'store' as const,
-        id: 'store-main',
-        name: storeSettings.storeName,
-        location: storeSettings.address ? 'Managua, Nicaragua' : undefined,
-        badge: 'oficial',
-        productCount: products.filter((p) => !p.sellerName || p.sellerName === storeSettings.storeName).length
-      });
-    }
+    // Real-time registered stores (/stores + local registry)
+    registeredStores.forEach((st) => {
+      const cleanName = (st.storeName || '').trim();
+      if (!cleanName || LEGACY_AI_STORE_NAMES.has(cleanName.toLowerCase())) return;
+      const matchesName = cleanName.toLowerCase().includes(cleanQuery);
+      const matchesCity = st.city?.toLowerCase().includes(cleanQuery);
+      const matchesOwner = st.ownerName?.toLowerCase().includes(cleanQuery);
 
-    // Community sellers from products
+      if (matchesName || matchesCity || matchesOwner) {
+        const key = cleanName.toLowerCase();
+        storesMap.set(key, {
+          type: 'store' as const,
+          id: `store-reg-${st.id || key}`,
+          name: cleanName,
+          location: st.city ? `${st.city}, Nicaragua` : 'Nicaragua',
+          badge: 'vendedor',
+          productCount: products.filter(
+            (p) =>
+              (p.sellerName && p.sellerName.trim().toLowerCase() === key) ||
+              (st.ownerId && p.authorId === st.ownerId)
+          ).length
+        });
+      }
+    });
+
+    // Community sellers from real products
     products.forEach((p) => {
-      if (p.sellerName && p.sellerName.toLowerCase().includes(cleanQuery)) {
-        const key = p.sellerName.toLowerCase();
+      const cleanName = (p.sellerName || '').trim();
+      if (!cleanName || LEGACY_AI_STORE_NAMES.has(cleanName.toLowerCase())) return;
+      if (cleanName.toLowerCase().includes(cleanQuery)) {
+        const key = cleanName.toLowerCase();
         if (!storesMap.has(key)) {
           storesMap.set(key, {
             type: 'store' as const,
-            id: `store-seller-${p.sellerName}`,
-            name: p.sellerName,
+            id: `store-seller-${cleanName}`,
+            name: cleanName,
             location: p.sellerCity || 'Nicaragua',
             badge: 'vendedor',
-            productCount: products.filter((item) => item.sellerName === p.sellerName).length
+            productCount: products.filter(
+              (item) => item.sellerName && item.sellerName.trim().toLowerCase() === key
+            ).length
           });
         }
       }
     });
 
-    // Business ads registered in directory
+    // Real business ads registered in directory
     businessAds.forEach((ad) => {
-      const matchName = ad.businessName.toLowerCase().includes(cleanQuery);
+      const cleanName = (ad.businessName || '').trim();
+      if (!cleanName || LEGACY_AI_STORE_NAMES.has(cleanName.toLowerCase())) return;
+      const matchName = cleanName.toLowerCase().includes(cleanQuery);
       const matchDept = ad.department?.toLowerCase().includes(cleanQuery);
-      const key = ad.businessName.toLowerCase();
+      const key = cleanName.toLowerCase();
 
       if ((matchName || matchDept) && !storesMap.has(key)) {
         storesMap.set(key, {
           type: 'store' as const,
           id: `store-ad-${ad.id}`,
-          name: ad.businessName,
+          name: cleanName,
           location: ad.department ? `${ad.department}, Nicaragua` : 'Nicaragua',
           badge: 'negocio',
-          productCount: products.filter((p) => p.sellerName === ad.businessName).length
+          productCount: products.filter(
+            (p) => p.sellerName && p.sellerName.trim().toLowerCase() === key
+          ).length
         });
       }
     });
 
-    return Array.from(storesMap.values()).slice(0, 4);
-  }, [storeSettings, products, businessAds, cleanQuery]);
+    return Array.from(storesMap.values()).slice(0, 5);
+  }, [registeredStores, products, businessAds, cleanQuery]);
 
   // 3. Compute Product Suggestions
   const matchingProducts = useMemo<ProductSuggestion[]>(() => {
@@ -560,17 +599,24 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                 ))}
               </div>
 
-              {/* Store Quick Jump */}
+              {/* Store Directory Quick Jump */}
               <div className="mt-3 pt-3 border-t border-stone-200/70 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => handleSelectStore(storeSettings.storeName)}
+                  onClick={() => {
+                    setIsOpen(false);
+                    if (onOpenStoresDirectory) {
+                      onOpenStoresDirectory();
+                    } else {
+                      handleSelectStore('Todas');
+                    }
+                  }}
                   className="inline-flex items-center gap-2 text-xs font-bold text-violet-700 hover:text-violet-900 cursor-pointer"
                 >
                   <Store className="w-3.5 h-3.5" />
-                  <span>Ver Tienda Oficial ({storeSettings.storeName})</span>
+                  <span>Explorar Tiendas Registradas ({realStoresCount})</span>
                 </button>
-                <span className="text-[10px] text-stone-400 font-medium">Comunidad Nicaragua</span>
+                <span className="text-[10px] text-emerald-700 font-bold">Tiempo Real</span>
               </div>
             </div>
           )}
@@ -653,14 +699,9 @@ export const SearchAutocomplete: React.FC<SearchAutocompleteProps> = ({
                                 <span className="text-xs sm:text-sm font-bold truncate">
                                   <HighlightMatch text={store.name} query={searchQuery} />
                                 </span>
-                                {store.badge === 'oficial' && (
-                                  <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-amber-200 text-amber-900 shrink-0">
-                                    Oficial
-                                  </span>
-                                )}
                                 {store.badge === 'vendedor' && (
                                   <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-emerald-200 text-emerald-900 shrink-0">
-                                    Comunidad
+                                    En Tiempo Real
                                   </span>
                                 )}
                                 {store.badge === 'negocio' && (

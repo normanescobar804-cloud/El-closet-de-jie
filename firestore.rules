@@ -170,7 +170,7 @@ service cloud.firestore {
           'uid', 'displayName', 'city', 'favoritesCsv', 'loyaltyPoints', 'createdAt', 'updatedAt'
         ]) &&
         data.keys().hasOnly([
-          'uid', 'displayName', 'city', 'favoritesCsv', 'loyaltyPoints', 'createdAt', 'updatedAt'
+          'uid', 'displayName', 'city', 'favoritesCsv', 'loyaltyPoints', 'photoURL', 'createdAt', 'updatedAt'
         ]) &&
         isValidId(data.uid) &&
         data.uid == request.auth.uid &&
@@ -178,6 +178,30 @@ service cloud.firestore {
         data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
         data.favoritesCsv is string && data.favoritesCsv.size() >= 0 && data.favoritesCsv.size() <= 2000 &&
         data.loyaltyPoints is number && data.loyaltyPoints >= 0 && data.loyaltyPoints <= 1000000 &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() >= 0 && data.photoURL.size() <= 900000)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStoreProfile(data) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'storeName', 'ownerName', 'city',
+          'bio', 'whatsapp', 'photoURL', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'storeName', 'ownerName', 'city',
+          'bio', 'whatsapp', 'photoURL', 'isActive', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerId) &&
+        (data.ownerId == request.auth.uid || isAdmin()) &&
+        data.storeName is string && data.storeName.size() >= 1 && data.storeName.size() <= 120 &&
+        data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 100 &&
+        data.city is string && data.city.size() >= 1 && data.city.size() <= 80 &&
+        data.bio is string && data.bio.size() >= 0 && data.bio.size() <= 500 &&
+        data.whatsapp is string && data.whatsapp.size() >= 0 && data.whatsapp.size() <= 40 &&
+        data.photoURL is string && data.photoURL.size() >= 0 && data.photoURL.size() <= 900000 &&
+        data.isActive is bool &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
     }
@@ -440,12 +464,12 @@ service cloud.firestore {
         incoming().uid == existing().uid &&
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time && (
-          // Action 1: Owner updates profile or favorites (cannot self-inflate loyaltyPoints)
+          // Action 1: Owner updates profile, photoURL, or favorites (cannot self-inflate loyaltyPoints)
           (
             isOwner(userId) &&
             incoming().loyaltyPoints == existing().loyaltyPoints &&
             incoming().diff(existing()).affectedKeys().hasOnly([
-              'displayName', 'city', 'favoritesCsv', 'updatedAt'
+              'displayName', 'city', 'favoritesCsv', 'photoURL', 'updatedAt'
             ])
           ) ||
           // Action 2: Admin escape hatch
@@ -499,6 +523,49 @@ service cloud.firestore {
 
         allow delete: if isVerifiedUser() && isValidId(userId) && isValidId(docId) && isAdmin();
       }
+    }
+
+    // =========================================================================
+    // Collection 3b: /stores/{storeId} (Real-Time Registered Stores Directory)
+    // =========================================================================
+    match /stores/{storeId} {
+      allow get: if isValidId(storeId);
+      allow list: if resource.data.isActive == true;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(storeId) &&
+        isOwner(storeId) &&
+        isValidStoreProfile(incoming()) &&
+        incoming().id == storeId &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) || isAdmin());
+
+      allow update: if isVerifiedUser() &&
+        isValidId(storeId) &&
+        isValidStoreProfile(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          (
+            isOwner(storeId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'storeName', 'ownerName', 'city', 'bio', 'whatsapp', 'photoURL', 'isActive', 'updatedAt'
+            ])
+          ) ||
+          (
+            isAdmin() &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'storeName', 'ownerName', 'city', 'bio', 'whatsapp', 'photoURL', 'isActive', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if isVerifiedUser() &&
+        isValidId(storeId) &&
+        (isOwner(storeId) || isAdmin());
     }
 
     // =========================================================================

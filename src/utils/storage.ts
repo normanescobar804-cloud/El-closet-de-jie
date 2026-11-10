@@ -1,6 +1,5 @@
-import { CartItem, CurrencyType, CustomerInquiry, CustomerTestimonial, OrderRecord, Product, ProductReview, StoreSettings, UserAccount } from '../types';
-import { DEFAULT_STORE_SETTINGS, INITIAL_ORDERS, INITIAL_PRODUCTS, INITIAL_REVIEWS } from '../data/initialProducts';
-import { INITIAL_TESTIMONIALS } from '../data/initialTestimonials';
+import { CartItem, CurrencyType, CustomerInquiry, CustomerTestimonial, OrderRecord, Product, ProductReview, RegisteredStore, StoreSettings, UserAccount } from '../types';
+import { DEFAULT_STORE_SETTINGS } from '../data/initialProducts';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'tienda_jiet_products_v2',
@@ -14,8 +13,32 @@ const STORAGE_KEYS = {
   REVIEWS: 'tienda_jiet_reviews_v2',
   TESTIMONIALS: 'tienda_jiet_testimonials_v2',
   RECENTLY_VIEWED: 'tienda_jiet_recently_viewed_v2',
-  ACCOUNTS_REGISTRY: 'tienda_jiet_accounts_registry_v2'
+  ACCOUNTS_REGISTRY: 'tienda_jiet_accounts_registry_v2',
+  STORES_REGISTRY: 'tienda_jiet_stores_registry_v2'
 };
+
+export const LEGACY_AI_STORE_NAMES = new Set([
+  'peluches & detalles nicaragua',
+  'boutique infantil san judas',
+  'modanica - tienda de ropa',
+  'modanica oficial',
+  'modanica express',
+  'dulce encanto pastelería & café',
+  'calzado artesanal masaya kids',
+  'mundo fiesta & piñatas pinoleras'
+]);
+
+const LEGACY_AI_PRODUCT_ID_REGEX = /^(prod-\d+|prod-peluche-\d+)$/i;
+
+export function isLegacyAiProduct(product: Product): boolean {
+  if (!product) return true;
+  if (LEGACY_AI_PRODUCT_ID_REGEX.test(product.id)) return true;
+  const sellerLower = (product.sellerName || '').trim().toLowerCase();
+  if (sellerLower && LEGACY_AI_STORE_NAMES.has(sellerLower)) {
+    return true;
+  }
+  return false;
+}
 
 // Safe JSON Parse
 function getFromStorage<T>(key: string, fallback: T): T {
@@ -36,39 +59,27 @@ function saveToStorage<T>(key: string, data: T): void {
   }
 }
 
-// Products
+// Products (Solo productos reales registrados en tiempo real, sin tiendas/productos hechos por IA)
 export function getSavedProducts(): Product[] {
   const saved = getFromStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []);
-  if (!saved || saved.length < 10) {
-    saveToStorage(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
-    return INITIAL_PRODUCTS;
+  if (!Array.isArray(saved) || saved.length === 0) {
+    return [];
   }
-  const savedIds = new Set(saved.map((p) => p.id));
-  const missingInitial = INITIAL_PRODUCTS.filter((p) => !savedIds.has(p.id));
-  const merged = missingInitial.length > 0 ? [...saved, ...missingInitial] : saved;
-
-  // Ensure stock is hydrated for existing stored products if missing
-  const initialMap = new Map(INITIAL_PRODUCTS.map((p) => [p.id, p]));
-  const hydrated = merged.map((p) => {
-    if (p.stock === undefined && p.inventory === undefined) {
-      const match = initialMap.get(p.id);
-      return {
-        ...p,
-        stock: match?.stock ?? (p.condition === 'usada' ? 1 : 5)
-      };
-    }
-    return p;
-  });
-  return hydrated;
+  const cleaned = saved.filter((p) => !isLegacyAiProduct(p));
+  if (cleaned.length !== saved.length) {
+    saveToStorage(STORAGE_KEYS.PRODUCTS, cleaned);
+  }
+  return cleaned;
 }
 
 export function saveProducts(products: Product[]): void {
-  saveToStorage(STORAGE_KEYS.PRODUCTS, products);
+  const cleaned = products.filter((p) => !isLegacyAiProduct(p));
+  saveToStorage(STORAGE_KEYS.PRODUCTS, cleaned);
 }
 
 export function resetProductsToDefault(): Product[] {
-  saveToStorage(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
-  return INITIAL_PRODUCTS;
+  saveToStorage(STORAGE_KEYS.PRODUCTS, []);
+  return [];
 }
 
 // Cart (💾 Persistent even across refreshes)
@@ -95,7 +106,10 @@ export function getSavedSettings(): StoreSettings {
   const saved = getFromStorage<Partial<StoreSettings>>(STORAGE_KEYS.SETTINGS, {});
   const merged: StoreSettings = { ...DEFAULT_STORE_SETTINGS, ...saved };
   
-  // Purge legacy hardcoded account and phone numbers so the store owner configures their own
+  // Purge legacy hardcoded AI store name and legacy phone/bank numbers
+  if (saved.storeName && LEGACY_AI_STORE_NAMES.has(saved.storeName.trim().toLowerCase())) {
+    merged.storeName = DEFAULT_STORE_SETTINGS.storeName;
+  }
   if (saved.whatsappNumber && (saved.whatsappNumber.includes('83702337') || saved.whatsappNumber.includes('87702337'))) {
     merged.whatsappNumber = '';
   }
@@ -142,38 +156,63 @@ export function saveUser(user: UserAccount | null): void {
   saveToStorage(STORAGE_KEYS.USER, user);
 }
 
-// 👥 Registro de Cuentas de Usuarios (Registro de Sesión Persistente)
+// 👥 Registro de Cuentas de Usuarios (Sin usuarios demo ficticios)
 export function getRegisteredAccounts(): UserAccount[] {
   const accounts = getFromStorage<UserAccount[]>(STORAGE_KEYS.ACCOUNTS_REGISTRY, []);
-  if (accounts.length === 0) {
-    const seed: UserAccount[] = [
-      {
-        uid: 'user-demo-1',
-        name: 'Carolina Rojas',
-        phone: '88889999',
-        phoneOrEmail: '88889999',
-        email: 'carolina@ejemplo.com',
-        pin: '1234',
-        city: 'Managua',
-        department: 'Managua',
-        address: 'Bello Horizonte, de la rotonda 2c al sur, casa #45',
-        indriveReference: 'Portón negro frente al parque',
-        preferredPaymentMethod: 'lafise_transfer',
-        loyaltyPoints: 120,
-        authProvider: 'local',
-        role: 'customer',
-        isLoggedIn: false,
-        createdAt: Date.now() - 86400000 * 5
-      }
-    ];
-    saveToStorage(STORAGE_KEYS.ACCOUNTS_REGISTRY, seed);
-    return seed;
+  if (!Array.isArray(accounts)) return [];
+  const cleaned = accounts.filter(
+    (acc) => acc && acc.uid !== 'user-demo-1' && acc.email !== 'carolina@ejemplo.com'
+  );
+  if (cleaned.length !== accounts.length) {
+    saveToStorage(STORAGE_KEYS.ACCOUNTS_REGISTRY, cleaned);
   }
-  return accounts;
+  return cleaned;
 }
 
 export function saveRegisteredAccounts(accounts: UserAccount[]): void {
   saveToStorage(STORAGE_KEYS.ACCOUNTS_REGISTRY, accounts);
+}
+
+// 🏬 Registro Local de Tiendas Registradas en Tiempo Real
+export function getSavedRegisteredStores(): RegisteredStore[] {
+  const stores = getFromStorage<RegisteredStore[]>(STORAGE_KEYS.STORES_REGISTRY, []);
+  if (!Array.isArray(stores)) return [];
+  const cleaned = stores.filter(
+    (s) => s && s.storeName && !LEGACY_AI_STORE_NAMES.has(s.storeName.trim().toLowerCase())
+  );
+  if (cleaned.length !== stores.length) {
+    saveToStorage(STORAGE_KEYS.STORES_REGISTRY, cleaned);
+  }
+  return cleaned;
+}
+
+export function saveRegisteredStores(stores: RegisteredStore[]): void {
+  const cleaned = stores.filter(
+    (s) => s && s.storeName && !LEGACY_AI_STORE_NAMES.has(s.storeName.trim().toLowerCase())
+  );
+  saveToStorage(STORAGE_KEYS.STORES_REGISTRY, cleaned);
+}
+
+export function upsertLocalRegisteredStore(store: RegisteredStore): RegisteredStore[] {
+  if (!store.storeName || LEGACY_AI_STORE_NAMES.has(store.storeName.trim().toLowerCase())) {
+    return getSavedRegisteredStores();
+  }
+  const current = getSavedRegisteredStores();
+  const idx = current.findIndex(
+    (s) =>
+      s.id === store.id ||
+      (s.ownerId && store.ownerId && s.ownerId === store.ownerId) ||
+      s.storeName.toLowerCase() === store.storeName.toLowerCase()
+  );
+  let updated: RegisteredStore[];
+  if (idx !== -1) {
+    updated = [...current];
+    updated[idx] = { ...current[idx], ...store, updatedAt: Date.now() };
+  } else {
+    updated = [store, ...current];
+  }
+  saveRegisteredStores(updated);
+  return updated;
 }
 
 export function registerCustomerAccount(
@@ -328,11 +367,14 @@ export function saveFavorites(favorites: string[]): void {
 // Orders
 export function getSavedOrders(): OrderRecord[] {
   const saved = getFromStorage<OrderRecord[]>(STORAGE_KEYS.ORDERS, []);
-  if (!saved || saved.length === 0) {
-    saveToStorage(STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
-    return INITIAL_ORDERS;
+  if (!Array.isArray(saved)) return [];
+  const cleaned = saved.filter(
+    (o) => o && o.id !== 'JIET-829104' && o.id !== 'JIET-710492'
+  );
+  if (cleaned.length !== saved.length) {
+    saveToStorage(STORAGE_KEYS.ORDERS, cleaned);
   }
-  return saved;
+  return cleaned;
 }
 
 export function saveOrder(order: OrderRecord): void {
@@ -373,11 +415,12 @@ export function deleteInquiry(inquiryId: string): void {
 // ⭐ Product Reviews & 5-Star Ratings
 export function getSavedReviews(): ProductReview[] {
   const saved = getFromStorage<ProductReview[]>(STORAGE_KEYS.REVIEWS, []);
-  if (!saved || saved.length === 0) {
-    saveToStorage(STORAGE_KEYS.REVIEWS, INITIAL_REVIEWS);
-    return INITIAL_REVIEWS;
+  if (!Array.isArray(saved)) return [];
+  const cleaned = saved.filter((r) => r && !/^rev-\d+$/.test(r.id));
+  if (cleaned.length !== saved.length) {
+    saveToStorage(STORAGE_KEYS.REVIEWS, cleaned);
   }
-  return saved;
+  return cleaned;
 }
 
 export function saveReview(review: ProductReview): ProductReview[] {
@@ -390,11 +433,12 @@ export function saveReview(review: ProductReview): ProductReview[] {
 // 💬 Testimonios de Clientes de la Plataforma (Carrusel y Perfil)
 export function getSavedTestimonials(): CustomerTestimonial[] {
   const saved = getFromStorage<CustomerTestimonial[]>(STORAGE_KEYS.TESTIMONIALS, []);
-  if (!saved || saved.length === 0) {
-    saveToStorage(STORAGE_KEYS.TESTIMONIALS, INITIAL_TESTIMONIALS);
-    return INITIAL_TESTIMONIALS;
+  if (!Array.isArray(saved)) return [];
+  const cleaned = saved.filter((t) => t && !/^testimonio-\d+$/.test(t.id));
+  if (cleaned.length !== saved.length) {
+    saveToStorage(STORAGE_KEYS.TESTIMONIALS, cleaned);
   }
-  return saved;
+  return cleaned;
 }
 
 export function saveTestimonial(testimonial: CustomerTestimonial): CustomerTestimonial[] {
@@ -551,12 +595,16 @@ export function getOptimizedCatalogImageUrl(url: string, disableHighRes: boolean
 // 🕒 Productos vistos recientemente (Recently Viewed Products)
 export function getSavedRecentlyViewed(): string[] {
   const saved = getFromStorage<string[] | null>(STORAGE_KEYS.RECENTLY_VIEWED, null);
-  if (saved === null) {
-    const initial = ['p1', 'p2', 'p3', 'p4'];
-    saveToStorage(STORAGE_KEYS.RECENTLY_VIEWED, initial);
-    return initial;
+  if (saved === null || !Array.isArray(saved)) {
+    return [];
   }
-  return saved;
+  const cleaned = saved.filter(
+    (id) => !/^p[1-4]$/.test(id) && !LEGACY_AI_PRODUCT_ID_REGEX.test(id)
+  );
+  if (cleaned.length !== saved.length) {
+    saveToStorage(STORAGE_KEYS.RECENTLY_VIEWED, cleaned);
+  }
+  return cleaned;
 }
 
 export function saveRecentlyViewed(ids: string[]): void {

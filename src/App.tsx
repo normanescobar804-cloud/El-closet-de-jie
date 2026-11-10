@@ -35,6 +35,7 @@ import {
   OrderRecord,
   PaymentStatusType,
   Product,
+  RegisteredStore,
   StoreSettings,
   UserAccount
 } from './types';
@@ -43,6 +44,7 @@ import {
   getSavedFavorites,
   getSavedOrders,
   getSavedProducts,
+  getSavedRegisteredStores,
   getSavedSettings,
   getSavedUser,
   getSavedCurrency,
@@ -60,7 +62,9 @@ import {
   formatCurrency,
   getSavedRecentlyViewed,
   saveRecentlyViewed,
-  clearRecentlyViewed
+  clearRecentlyViewed,
+  LEGACY_AI_STORE_NAMES,
+  isLegacyAiProduct
 } from './utils/storage';
 import {
   getAnalyticsData,
@@ -100,11 +104,11 @@ import {
   updateOrderInCloudByAdmin,
   markNotificationReadInCloud,
   subscribeToCloudProducts,
+  subscribeToCloudStores,
   subscribeToCloudBusinessAds,
   subscribeToUserOrders,
   subscribeToUserNotifications,
   subscribeToAllUsers,
-  seedInitialCatalogToCloud,
   syncFavoritesToCloud,
   ADMIN_OWNER_EMAIL
 } from './firebase';
@@ -160,10 +164,25 @@ export default function App() {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(getAnalyticsData);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
   const [cloudUsers, setCloudUsers] = useState<UserAccount[]>([]);
+  const [localStores, setLocalStores] = useState<RegisteredStore[]>(getSavedRegisteredStores);
+  const [cloudStores, setCloudStores] = useState<RegisteredStore[]>([]);
   const [recentlyViewedIds, setRecentlyViewedIds] = useState<string[]>(getSavedRecentlyViewed);
   const [testimonials, setTestimonials] = useState<CustomerTestimonial[]>(getSavedTestimonials);
   const [visitSeconds, setVisitSeconds] = useState<number>(0);
   const [visitDuration, setVisitDuration] = useState<string>('0s');
+
+  const registeredStores = useMemo<RegisteredStore[]>(() => {
+    const map = new Map<string, RegisteredStore>();
+    [...cloudStores, ...localStores].forEach((s) => {
+      const cleanName = (s.storeName || '').trim();
+      if (!cleanName || LEGACY_AI_STORE_NAMES.has(cleanName.toLowerCase())) return;
+      const key = cleanName.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, s);
+      }
+    });
+    return Array.from(map.values());
+  }, [cloudStores, localStores]);
 
   const isOwnerCreator = Boolean(
     currentUser?.email === ADMIN_OWNER_EMAIL ||
@@ -306,31 +325,46 @@ export default function App() {
   // --- ☁️ Firebase Cloud Auth & Firestore Real-time Sync ---
   useEffect(() => {
     const unsubProducts = subscribeToCloudProducts((cloudProducts) => {
-      if (cloudProducts.length > 0) {
-        setProducts((prev) => {
-          const map = new Map<string, Product>();
-          prev.forEach((p) => map.set(p.id, p));
-          cloudProducts.forEach((cp) => map.set(cp.id, cp));
-          return Array.from(map.values());
+      setProducts((prev) => {
+        const map = new Map<string, Product>();
+        // Keep local real products not yet overwritten by cloud
+        prev.forEach((p) => {
+          if (!isLegacyAiProduct(p)) {
+            map.set(p.id, p);
+          }
         });
-        setIsCloudConnected(true);
-      }
+        cloudProducts.forEach((cp) => {
+          if (!isLegacyAiProduct(cp)) {
+            map.set(cp.id, cp);
+          }
+        });
+        return Array.from(map.values());
+      });
+      setIsCloudConnected(true);
+    });
+
+    const unsubStores = subscribeToCloudStores((loadedCloudStores) => {
+      setCloudStores(loadedCloudStores);
+      setIsCloudConnected(true);
     });
 
     const unsubAds = subscribeToCloudBusinessAds((cloudAds) => {
-      if (cloudAds.length > 0) {
-        setBusinessAds((prev) => {
-          const map = new Map<string, BusinessAd>();
-          prev.forEach((a) => map.set(a.id, a));
-          cloudAds.forEach((ca) => map.set(ca.id, ca));
-          return Array.from(map.values());
+      setBusinessAds((prev) => {
+        const map = new Map<string, BusinessAd>();
+        prev.forEach((a) => {
+          if (!/^ad-nic-[123]$/.test(a.id) && !LEGACY_AI_STORE_NAMES.has((a.businessName || '').trim().toLowerCase())) {
+            map.set(a.id, a);
+          }
         });
-        setIsCloudConnected(true);
-      }
+        cloudAds.forEach((ca) => map.set(ca.id, ca));
+        return Array.from(map.values());
+      });
+      setIsCloudConnected(true);
     });
 
     return () => {
       unsubProducts();
+      unsubStores();
       unsubAds();
     };
   }, []);
@@ -817,12 +851,21 @@ export default function App() {
   );
 
   const availableSellers = useMemo(() => {
-    const sellers = new Set<string>(['Todas', storeSettings.storeName]);
+    const sellers = new Set<string>(['Todas']);
+    registeredStores.forEach((st) => {
+      const clean = (st.storeName || '').trim();
+      if (clean && !LEGACY_AI_STORE_NAMES.has(clean.toLowerCase())) {
+        sellers.add(clean);
+      }
+    });
     products.forEach((p) => {
-      if (p.sellerName) sellers.add(p.sellerName);
+      const clean = (p.sellerName || '').trim();
+      if (clean && !LEGACY_AI_STORE_NAMES.has(clean.toLowerCase())) {
+        sellers.add(clean);
+      }
     });
     return Array.from(sellers);
-  }, [products, storeSettings.storeName]);
+  }, [products, registeredStores]);
 
   // Filtered & Sorted Products for Display
   const displayedProducts = useMemo(() => {
@@ -859,9 +902,10 @@ export default function App() {
           (Boolean(product.featured) ||
             Date.now() - new Date(product.createdAt).getTime() < 30 * 86400000));
 
-      const productSeller = product.sellerName || storeSettings.storeName;
+      const productSeller = (product.sellerName || '').trim().toLowerCase();
       const matchesSeller =
-        selectedSellerFilter === 'Todas' || productSeller === selectedSellerFilter;
+        selectedSellerFilter === 'Todas' ||
+        productSeller === selectedSellerFilter.trim().toLowerCase();
 
       const matchesSearch =
         searchQuery === '' ||
@@ -951,6 +995,7 @@ export default function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         products={products}
+        registeredStores={registeredStores}
         categories={PRODUCT_CATEGORIES}
         businessAds={businessAds}
         catalogSection={catalogSection}
@@ -1674,26 +1719,57 @@ export default function App() {
             <div className="w-16 h-16 rounded-full bg-stone-100 text-stone-400 flex items-center justify-center mx-auto">
               <ShoppingBag className="w-8 h-8 stroke-[1.5]" />
             </div>
-            <div>
-              <h3 className="font-serif text-xl font-bold text-stone-900">
-                No encontramos productos con esos criterios
-              </h3>
-              <p className="text-xs text-stone-500 mt-1">
-                Intenta cambiar el filtro de tienda, rango de precio o categoría.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setSelectedCategory('Todas');
-                setSelectedSellerFilter('Todas');
-                setSearchQuery('');
-                setPriceRange('all');
-                setShowOnlyInStock(false);
-              }}
-              className="bg-stone-900 text-white text-xs font-bold px-5 py-2.5 rounded-full hover:bg-stone-800 transition-colors shadow-xs cursor-pointer"
-            >
-              Ver todos los productos
-            </button>
+            {products.length === 0 ? (
+              <>
+                <div>
+                  <h3 className="font-serif text-xl font-bold text-stone-900">
+                    Catálogo Real en Tiempo Real
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-1.5 leading-relaxed">
+                    Solo se muestran tiendas y productos registrados en tiempo real por usuarios de la plataforma (sin tiendas hechas por IA). ¡Abre tu tienda gratis o busca tiendas registradas!
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsFreeSellerPortalOpen(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-5 py-2.5 rounded-full transition-colors shadow-xs cursor-pointer"
+                  >
+                    + Abrir Mi Tienda y Subir Productos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsStoreDirectoryOpen(true)}
+                    className="bg-violet-700 hover:bg-violet-800 text-white text-xs font-bold px-5 py-2.5 rounded-full transition-colors shadow-xs cursor-pointer"
+                  >
+                    🏬 Buscar Tiendas ({availableSellers.length - 1})
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h3 className="font-serif text-xl font-bold text-stone-900">
+                    No encontramos productos con esos criterios
+                  </h3>
+                  <p className="text-xs text-stone-500 mt-1">
+                    Intenta cambiar el filtro de tienda, rango de precio o categoría.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedCategory('Todas');
+                    setSelectedSellerFilter('Todas');
+                    setSearchQuery('');
+                    setPriceRange('all');
+                    setShowOnlyInStock(false);
+                  }}
+                  className="bg-stone-900 text-white text-xs font-bold px-5 py-2.5 rounded-full hover:bg-stone-800 transition-colors shadow-xs cursor-pointer"
+                >
+                  Ver todos los productos
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
@@ -2114,6 +2190,7 @@ export default function App() {
         isOpen={isFreeSellerPortalOpen}
         onClose={() => setIsFreeSellerPortalOpen(false)}
         products={products}
+        registeredStores={registeredStores}
         currentUser={currentUser}
         currency={currency}
         storeSettings={storeSettings}
@@ -2125,6 +2202,7 @@ export default function App() {
           setCurrentUser(updatedUser);
           saveUser(updatedUser);
         }}
+        onStoreRegistered={() => setLocalStores(getSavedRegisteredStores())}
         onFilterBySeller={(sellerName) => {
           setSelectedSellerFilter(sellerName);
           document.getElementById('catalogo-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -2142,6 +2220,7 @@ export default function App() {
           setCurrentUser(updatedUser);
           saveUser(updatedUser);
         }}
+        onStoreRegistered={() => setLocalStores(getSavedRegisteredStores())}
       />
 
       {/* 14c. Platform Monetization & Owner Earnings Hub (2% Commission, PayPal Withdrawals, Ads, Pro/VIP Plans) */}
@@ -2338,18 +2417,25 @@ export default function App() {
         currency={currency}
       />
 
-      {/* 23. Clothing Stores & Boutiques Directory Showcase Modal */}
+      {/* 23. Real-Time Stores & Boutiques Directory Showcase Modal */}
       <StoreDirectoryModal
         isOpen={isStoreDirectoryOpen}
         onClose={() => setIsStoreDirectoryOpen(false)}
         products={products}
+        registeredStores={registeredStores}
         storeSettings={storeSettings}
+        currency={currency}
         currentUser={currentUser}
         onSelectStore={(storeName) => {
           setSelectedSellerFilter(storeName);
           document.getElementById('catalogo-section')?.scrollIntoView({ behavior: 'smooth' });
         }}
         onOpenSellerPortal={() => setIsFreeSellerPortalOpen(true)}
+        onQuickViewProduct={(prod) => setQuickViewProduct(prod)}
+        onAddToCart={(prod, size) => handleAddToCart(prod, size, undefined, 1)}
+        onOpenChatWithStore={(storeName, prod) => {
+          handleOpenChat(prod, `tienda-${storeName.toLowerCase().replace(/\s+/g, '-')}`);
+        }}
       />
 
       {/* 24. Floating Toasts */}

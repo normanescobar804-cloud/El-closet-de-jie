@@ -12,9 +12,11 @@ import {
   User,
   Info
 } from 'lucide-react';
-import { StoreSettings, UserAccount } from '../types';
+import { RegisteredStore, StoreSettings, UserAccount } from '../types';
 import { NICARAGUA_DEPARTMENTS } from '../utils/advertising';
 import { PLATFORM_OWNER_CONFIG } from '../utils/monetization';
+import { LEGACY_AI_STORE_NAMES, upsertLocalRegisteredStore } from '../utils/storage';
+import { saveStoreToCloud } from '../firebase';
 
 interface EditStoreModalProps {
   isOpen: boolean;
@@ -23,6 +25,7 @@ interface EditStoreModalProps {
   currentUser: UserAccount | null;
   onSaveSettings: (settings: StoreSettings) => void;
   onUpdateUser: (user: UserAccount) => void;
+  onStoreRegistered?: (store: RegisteredStore) => void;
 }
 
 export const EditStoreModal: React.FC<EditStoreModalProps> = ({
@@ -31,16 +34,20 @@ export const EditStoreModal: React.FC<EditStoreModalProps> = ({
   storeSettings,
   currentUser,
   onSaveSettings,
-  onUpdateUser
+  onUpdateUser,
+  onStoreRegistered
 }) => {
-  const [storeName, setStoreName] = useState(
-    currentUser?.storeName || storeSettings.storeName || ''
-  );
+  const initialStoreName =
+    currentUser?.storeName && !LEGACY_AI_STORE_NAMES.has(currentUser.storeName.trim().toLowerCase())
+      ? currentUser.storeName
+      : '';
+
+  const [storeName, setStoreName] = useState(initialStoreName);
   const [tagline, setTagline] = useState(
     currentUser?.storeBio || storeSettings.tagline || ''
   );
   const [whatsappNumber, setWhatsappNumber] = useState(
-    currentUser?.storeWhatsapp || storeSettings.whatsappNumber || ''
+    currentUser?.storeWhatsapp || currentUser?.phone || storeSettings.whatsappNumber || ''
   );
   const [whatsappCustomGreeting, setWhatsappCustomGreeting] = useState(
     storeSettings.whatsappCustomGreeting || '¡Hola! 👋 Me gustaría realizar el siguiente pedido:'
@@ -68,9 +75,13 @@ export const EditStoreModal: React.FC<EditStoreModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      setStoreName(currentUser?.storeName || storeSettings.storeName || '');
+      const cleanName =
+        currentUser?.storeName && !LEGACY_AI_STORE_NAMES.has(currentUser.storeName.trim().toLowerCase())
+          ? currentUser.storeName
+          : '';
+      setStoreName(cleanName);
       setTagline(currentUser?.storeBio || storeSettings.tagline || '');
-      setWhatsappNumber(currentUser?.storeWhatsapp || storeSettings.whatsappNumber || '');
+      setWhatsappNumber(currentUser?.storeWhatsapp || currentUser?.phone || storeSettings.whatsappNumber || '');
       setBankAccount(currentUser?.storeBankAccount || storeSettings.bankAccount || '');
       setBankAccountHolder(currentUser?.storeBankAccountHolder || storeSettings.bankAccountHolder || '');
       setSellerWalletPhone(storeSettings.sellerWalletPhone || '');
@@ -85,8 +96,13 @@ export const EditStoreModal: React.FC<EditStoreModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeName.trim()) {
+    const cleanStoreName = storeName.trim();
+    if (!cleanStoreName) {
       setError('Por favor ingresa el nombre de tu tienda de ropa.');
+      return;
+    }
+    if (LEGACY_AI_STORE_NAMES.has(cleanStoreName.toLowerCase())) {
+      setError('Por favor elige un nombre propio original para tu tienda.');
       return;
     }
     if (!whatsappNumber.trim()) {
@@ -96,7 +112,7 @@ export const EditStoreModal: React.FC<EditStoreModalProps> = ({
 
     const updatedSettings: StoreSettings = {
       ...storeSettings,
-      storeName: storeName.trim(),
+      storeName: currentUser?.role === 'admin' ? cleanStoreName : storeSettings.storeName,
       tagline: tagline.trim() || 'Ropa y Moda para toda la familia en Nicaragua',
       whatsappNumber: whatsappNumber.trim(),
       whatsappCustomGreeting: whatsappCustomGreeting.trim(),
@@ -122,11 +138,11 @@ export const EditStoreModal: React.FC<EditStoreModalProps> = ({
     const updatedUser: UserAccount = {
       ...(currentUser || {
         isLoggedIn: true,
-        name: bankAccountHolder.trim() || storeName.trim(),
+        name: bankAccountHolder.trim() || cleanStoreName,
         phone: whatsappNumber.trim(),
         createdAt: Date.now()
       }),
-      storeName: storeName.trim(),
+      storeName: cleanStoreName,
       storeWhatsapp: whatsappNumber.trim(),
       storeBankAccount: bankAccount.trim(),
       storeBankAccountHolder: bankAccountHolder.trim(),
@@ -139,6 +155,26 @@ export const EditStoreModal: React.FC<EditStoreModalProps> = ({
       updatedAt: Date.now()
     };
     onUpdateUser(updatedUser);
+
+    // Register store in real-time local registry and Firestore /stores
+    const newRegisteredStore: RegisteredStore = {
+      id: updatedUser.uid || `store-${cleanStoreName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      ownerId: updatedUser.uid || `local-${whatsappNumber.replace(/\D/g, '')}`,
+      storeName: cleanStoreName,
+      ownerName: updatedUser.name || cleanStoreName,
+      city: department,
+      bio: tagline.trim() || 'Tienda registrada en tiempo real en Nicaragua.',
+      whatsapp: whatsappNumber.trim(),
+      photoURL: updatedUser.photoURL,
+      isActive: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    upsertLocalRegisteredStore(newRegisteredStore);
+    onStoreRegistered?.(newRegisteredStore);
+    saveStoreToCloud(newRegisteredStore).catch((err) =>
+      console.warn('Cloud store registration notice:', err)
+    );
 
     setSavedSuccess(true);
     setTimeout(() => {
@@ -164,7 +200,7 @@ export const EditStoreModal: React.FC<EditStoreModalProps> = ({
                 </span>
               </h3>
               <p className="text-xs text-stone-300">
-                Configura tu WhatsApp y cuentas bancarias donde recibirás los pedidos y tus ganancias (97%).
+                Configura tu WhatsApp y cuentas bancarias donde recibirás los pedidos y tus ganancias (98%).
               </p>
             </div>
           </div>

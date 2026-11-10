@@ -16,16 +16,22 @@ import {
   Share2,
   LogIn
 } from 'lucide-react';
-import { CurrencyType, Product, StoreSettings, UserAccount } from '../types';
+import { CurrencyType, Product, RegisteredStore, StoreSettings, UserAccount } from '../types';
 import { PRODUCT_CATEGORIES } from '../data/initialProducts';
 import { NICARAGUA_DEPARTMENTS } from '../utils/advertising';
-import { formatCurrency, processHighResImage } from '../utils/storage';
+import {
+  formatCurrency,
+  processHighResImage,
+  LEGACY_AI_STORE_NAMES,
+  upsertLocalRegisteredStore
+} from '../utils/storage';
 import { uploadProductImageToStorage } from '../firebase';
 
 interface FreeSellerPortalModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: Product[];
+  registeredStores?: RegisteredStore[];
   currentUser: UserAccount | null;
   currency: CurrencyType;
   storeSettings: StoreSettings;
@@ -34,6 +40,7 @@ interface FreeSellerPortalModalProps {
   onDeleteProduct: (productId: string) => void;
   onGoogleLogin: () => Promise<void>;
   onUpdateUser: (user: UserAccount) => void;
+  onStoreRegistered?: (store: RegisteredStore) => void;
   onFilterBySeller?: (sellerName: string) => void;
 }
 
@@ -41,6 +48,7 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
   isOpen,
   onClose,
   products,
+  registeredStores = [],
   currentUser,
   currency,
   storeSettings,
@@ -49,6 +57,7 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
   onDeleteProduct,
   onGoogleLogin,
   onUpdateUser,
+  onStoreRegistered,
   onFilterBySeller
 }) => {
   const [activeTab, setActiveTab] = useState<'publish' | 'my_items' | 'community_stores'>('publish');
@@ -108,34 +117,42 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
       }
     >();
 
-    // Always include official store
-    map.set(storeSettings.storeName, {
-      sellerName: storeSettings.storeName,
-      sellerCity: 'Managua • Tienda Oficial',
-      sellerPhone: storeSettings.whatsappNumber,
-      count: products.filter((p) => !p.sellerName || p.sellerName === storeSettings.storeName).length,
-      sampleImage: products[0]?.images?.[0] || '/portada.jpg'
+    // First include real-time registered stores
+    registeredStores.forEach((store) => {
+      const cleanName = store.storeName?.trim();
+      if (!cleanName || LEGACY_AI_STORE_NAMES.has(cleanName.toLowerCase())) return;
+      const storeProds = products.filter(
+        (p) =>
+          (p.sellerName && p.sellerName.trim().toLowerCase() === cleanName.toLowerCase()) ||
+          (store.ownerId && p.authorId === store.ownerId)
+      );
+      map.set(cleanName.toLowerCase(), {
+        sellerName: cleanName,
+        sellerCity: store.city || 'Nicaragua',
+        sellerPhone: store.whatsapp || '',
+        count: storeProds.length,
+        sampleImage: storeProds[0]?.images?.[0] || store.photoURL || '/portada.jpg'
+      });
     });
 
+    // Include real-time product sellers that aren't legacy AI stores
     products.forEach((p) => {
-      if (p.sellerName && p.sellerName !== storeSettings.storeName) {
-        const existing = map.get(p.sellerName);
-        if (existing) {
-          existing.count += 1;
-        } else {
-          map.set(p.sellerName, {
-            sellerName: p.sellerName,
-            sellerCity: p.sellerCity || 'Nicaragua',
-            sellerPhone: p.sellerPhone || storeSettings.whatsappNumber,
-            count: 1,
-            sampleImage: p.images?.[0] || '/portada.jpg'
-          });
-        }
+      const cleanName = p.sellerName?.trim();
+      if (!cleanName || LEGACY_AI_STORE_NAMES.has(cleanName.toLowerCase())) return;
+      const key = cleanName.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          sellerName: cleanName,
+          sellerCity: p.sellerCity || 'Nicaragua',
+          sellerPhone: p.sellerPhone || '',
+          count: 1,
+          sampleImage: p.images?.[0] || '/portada.jpg'
+        });
       }
     });
 
     return Array.from(map.values());
-  }, [products, storeSettings]);
+  }, [products, registeredStores]);
 
   if (!isOpen) return null;
 
@@ -221,6 +238,25 @@ export const FreeSellerPortalModal: React.FC<FreeSellerPortalModalProps> = ({
       updatedAt: Date.now()
     };
     onUpdateUser(updatedUser);
+
+    // Register user's store in real-time local registry (and saveProductToCloud syncs /stores)
+    if (!LEGACY_AI_STORE_NAMES.has(cleanSellerName.toLowerCase())) {
+      const newStore: RegisteredStore = {
+        id: currentUser?.uid || `store-${cleanSellerName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        ownerId: currentUser?.uid || `local-${cleanSellerPhone.replace(/\D/g, '')}`,
+        storeName: cleanSellerName,
+        ownerName: updatedUser.name,
+        city: cleanSellerCity,
+        bio: updatedUser.storeBio || 'Tienda registrada en tiempo real en Nicaragua.',
+        whatsapp: cleanSellerPhone,
+        photoURL: updatedUser.photoURL,
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      upsertLocalRegisteredStore(newStore);
+      onStoreRegistered?.(newStore);
+    }
 
     const newProduct: Product = {
       id: editingId || `com-${Date.now().toString().slice(-7)}`,

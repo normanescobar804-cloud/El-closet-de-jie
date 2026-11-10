@@ -110,99 +110,34 @@ export const DEFAULT_ADSENSE_CONFIG: GoogleAdSenseConfig = {
   showFallbackSponsorPrompt: true
 };
 
-export const INITIAL_BUSINESS_ADS: BusinessAd[] = [
-  {
-    id: 'ad-nic-1',
-    businessName: 'Dulce Encanto Pastelería & Café',
-    category: 'Pastelería y Repostería',
-    department: 'Managua',
-    headline: 'Pasteles personalizados para cumpleaños infantiles y eventos en Managua',
-    description: 'Endulzamos las celebraciones de tus peques con pasteles temáticos, cupcakes y postres artesanales recién horneados.',
-    promoText: '🎁 10% OFF en tu pastel mencionando El Clóset de Jié',
-    imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=80',
-    whatsappPhone: '50588887711',
-    websiteOrSocialUrl: 'https://instagram.com',
-    ctaText: 'Cotizar Pastel por WhatsApp',
-    planId: 'vip_patrocinador',
-    planName: 'Plan Patrocinador Oficial VIP (60 Días)',
-    pricePaid: 1200,
-    currency: 'NIO',
-    paymentMethod: 'transferencia_lafise',
-    paymentStatus: 'pagado',
-    status: 'activo',
-    impressions: 342,
-    clicks: 48,
-    ownerName: 'María Fernanda Rivas',
-    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    expiresAt: new Date(Date.now() + 57 * 86400000).toISOString()
-  },
-  {
-    id: 'ad-nic-2',
-    businessName: 'Calzado Artesanal Masaya Kids',
-    category: 'Calzado y Marroquinería',
-    department: 'Masaya',
-    headline: 'Zapatos, sandalias y botas 100% cuero nicaragüense para niños y adultos',
-    description: 'Calidad garantizada hecha por manos artesanas de Masaya. Envíos rápidos a toda Nicaragua y precios de taller.',
-    promoText: '🛵 Envío gratis en Managua y Masaya por 2 pares',
-    imageUrl: 'https://images.unsplash.com/photo-1515347619252-60a4bf4fff4f?auto=format&fit=crop&w=900&q=80',
-    whatsappPhone: '50589992233',
-    ctaText: 'Ver Catálogo en WhatsApp',
-    planId: 'destacado_mensual',
-    planName: 'Plan Negocio Destacado (30 Días)',
-    pricePaid: 650,
-    currency: 'NIO',
-    paymentMethod: 'transferencia_lafise',
-    paymentStatus: 'pagado',
-    status: 'activo',
-    impressions: 215,
-    clicks: 31,
-    ownerName: 'Carlos Humberto Membreño',
-    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-    expiresAt: new Date(Date.now() + 25 * 86400000).toISOString()
-  },
-  {
-    id: 'ad-nic-3',
-    businessName: 'Mundo Fiesta & Piñatas Pinoleras',
-    category: 'Juguetería y Eventos Infantiles',
-    department: 'León',
-    headline: 'Decoración con globos, piñatas personalizadas y alquiler de brinca-brinca',
-    description: 'Armamos el paquete completo para fiestas infantiles en León, Chinandega y Managua. ¡Precios especiales de temporada!',
-    promoText: '🎈 Piñata gratis al contratar paquete de decoración',
-    imageUrl: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=900&q=80',
-    whatsappPhone: '50587774455',
-    ctaText: 'Reservar Fecha por WhatsApp',
-    planId: 'destacado_mensual',
-    planName: 'Plan Negocio Destacado (30 Días)',
-    pricePaid: 650,
-    currency: 'NIO',
-    paymentMethod: 'tarjeta_credito_debito',
-    paymentStatus: 'pagado',
-    status: 'activo',
-    impressions: 189,
-    clicks: 24,
-    ownerName: 'Lucía Castellón',
-    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-    expiresAt: new Date(Date.now() + 28 * 86400000).toISOString()
-  }
-];
+export const INITIAL_BUSINESS_ADS: BusinessAd[] = [];
+
+const LEGACY_AI_AD_IDS = new Set(['ad-nic-1', 'ad-nic-2', 'ad-nic-3']);
 
 export function getSavedBusinessAds(): BusinessAd[] {
   try {
     const raw = localStorage.getItem(BUSINESS_ADS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(BUSINESS_ADS_STORAGE_KEY, JSON.stringify(INITIAL_BUSINESS_ADS));
-      return INITIAL_BUSINESS_ADS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_BUSINESS_ADS;
+    if (!Array.isArray(parsed)) return [];
+    const cleaned = parsed.filter(
+      (ad: BusinessAd) => ad && !LEGACY_AI_AD_IDS.has(ad.id)
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(BUSINESS_ADS_STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
-    return INITIAL_BUSINESS_ADS;
+    return [];
   }
 }
 
 export function saveBusinessAds(ads: BusinessAd[]): void {
   try {
-    localStorage.setItem(BUSINESS_ADS_STORAGE_KEY, JSON.stringify(ads));
+    const cleaned = ads.filter((ad) => ad && !LEGACY_AI_AD_IDS.has(ad.id));
+    localStorage.setItem(BUSINESS_ADS_STORAGE_KEY, JSON.stringify(cleaned));
   } catch (e) {
     console.error('Error saving business ads:', e);
   }

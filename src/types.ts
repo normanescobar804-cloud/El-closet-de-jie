@@ -266,6 +266,20 @@ export interface UserAccount {
   updatedAt?: number;
 }
 
+export interface RegisteredStore {
+  id: string;
+  ownerId: string;
+  storeName: string;
+  ownerName: string;
+  city: string;
+  bio?: string;
+  whatsapp?: string;
+  photoURL?: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface OrderItemSummary {
   productId: string;
   productName: string;

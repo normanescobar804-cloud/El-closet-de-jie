@@ -375,6 +375,12 @@
           "type": "number",
           "description": "Accumulated customer loyalty points."
         },
+        "photoURL": {
+          "type": "string",
+          "description": "User profile photo URL or optimized data URI.",
+          "minLength": 0,
+          "maxLength": 900000
+        },
         "createdAt": {
           "type": "string",
           "format": "date-time",
@@ -392,6 +398,90 @@
         "city",
         "favoritesCsv",
         "loyaltyPoints",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StoreProfile": {
+      "title": "StoreProfile",
+      "description": "Real-time registered clothing store or seller storefront on the platform.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Store document ID (matches owner UID).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the store owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeName": {
+          "type": "string",
+          "description": "Public storefront name.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the store owner.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "city": {
+          "type": "string",
+          "description": "Department or city in Nicaragua.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "bio": {
+          "type": "string",
+          "description": "Store specialty and description.",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "whatsapp": {
+          "type": "string",
+          "description": "Public WhatsApp contact number for orders.",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Store avatar or logo image URL.",
+          "minLength": 0,
+          "maxLength": 900000
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the store is active in the real-time directory."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Store registration server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Store last update server timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "storeName",
+        "ownerName",
+        "city",
+        "bio",
+        "whatsapp",
+        "photoURL",
+        "isActive",
         "createdAt",
         "updatedAt"
       ]
@@ -720,6 +810,10 @@
     "/users/{userId}/private/{docId}": {
       "schema": { "$ref": "#/entities/UserPrivateInfo" },
       "description": "Isolated PII customer contact, address, and payment preference records."
+    },
+    "/stores/{storeId}": {
+      "schema": { "$ref": "#/entities/StoreProfile" },
+      "description": "Real-time registered clothing stores and boutiques open for shopper discovery."
     },
     "/orders/{orderId}": {
       "schema": { "$ref": "#/entities/Order" },

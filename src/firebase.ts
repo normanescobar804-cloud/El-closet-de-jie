@@ -40,8 +40,10 @@ import {
   PaymentMethodType,
   PaymentStatusType,
   Product,
+  RegisteredStore,
   UserAccount
 } from './types';
+import { LEGACY_AI_STORE_NAMES, isLegacyAiProduct } from './utils/storage';
 
 // Initialize Firebase App, Firestore Database, Auth, and Storage
 const app = initializeApp(firebaseConfig);
@@ -274,6 +276,11 @@ export async function ensureCustomerAccountInFirestore(
     2000,
     ''
   );
+  const photoURL = truncateString(
+    overrides?.photoURL || (existingPublic?.photoURL as string) || fbUser.photoURL || '',
+    900000,
+    ''
+  );
 
   if (!existingPublic) {
     try {
@@ -283,18 +290,20 @@ export async function ensureCustomerAccountInFirestore(
         city,
         favoritesCsv,
         loyaltyPoints: 0,
+        photoURL,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, publicPath);
     }
-  } else if (overrides?.name || overrides?.city || favorites.length > 0) {
+  } else if (overrides?.name || overrides?.city || overrides?.photoURL || favorites.length > 0) {
     try {
       await updateDoc(doc(db, 'users', uid), {
         displayName,
         city,
         favoritesCsv,
+        photoURL,
         updatedAt: serverTimestamp()
       });
     } catch (error) {
@@ -379,7 +388,7 @@ export async function ensureCustomerAccountInFirestore(
     name: displayName,
     email,
     phone,
-    photoURL: fbUser.photoURL || undefined,
+    photoURL: photoURL || fbUser.photoURL || undefined,
     city,
     department: overrides?.department || city,
     storeName: overrides?.storeName || displayName,
@@ -388,6 +397,116 @@ export async function ensureCustomerAccountInFirestore(
     role: isAdmin ? 'admin' : 'seller',
     favorites: favoritesCsv ? favoritesCsv.split(',').filter(Boolean) : [],
     isLoggedIn: true,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+// ============================================================================
+// Real-Time Registered Stores Directory Sync (/stores/{storeId})
+// ============================================================================
+export async function saveStoreToCloud(
+  store: Partial<RegisteredStore> & { storeName: string }
+): Promise<RegisteredStore | null> {
+  if (!auth.currentUser) return null;
+  const cleanStoreName = truncateString(store.storeName, 120, '');
+  if (!cleanStoreName || LEGACY_AI_STORE_NAMES.has(cleanStoreName.toLowerCase())) {
+    return null;
+  }
+
+  const uid = sanitizeId(auth.currentUser.uid);
+  const storeId = uid;
+  const path = `stores/${storeId}`;
+
+  await ensureCustomerAccountInFirestore(auth.currentUser, {
+    name: store.ownerName || auth.currentUser.displayName || cleanStoreName,
+    phone: store.whatsapp || undefined,
+    city: store.city || 'Managua',
+    photoURL: store.photoURL || auth.currentUser.photoURL || undefined
+  });
+
+  let existingStore: Record<string, unknown> | null = null;
+  try {
+    const snap = await getDoc(doc(db, 'stores', storeId));
+    if (snap.exists()) {
+      existingStore = snap.data();
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+  }
+
+  const ownerName = truncateString(
+    store.ownerName || (existingStore?.ownerName as string) || auth.currentUser.displayName || cleanStoreName,
+    100,
+    cleanStoreName
+  );
+  const city = truncateString(
+    store.city || (existingStore?.city as string) || 'Managua',
+    80,
+    'Managua'
+  );
+  const bio = truncateString(
+    store.bio !== undefined ? store.bio : ((existingStore?.bio as string) || ''),
+    500,
+    ''
+  );
+  const whatsapp = truncateString(
+    store.whatsapp !== undefined ? store.whatsapp : ((existingStore?.whatsapp as string) || ''),
+    40,
+    ''
+  );
+  const photoURL = truncateString(
+    store.photoURL !== undefined ? store.photoURL : ((existingStore?.photoURL as string) || auth.currentUser.photoURL || ''),
+    900000,
+    ''
+  );
+  const isActive = store.isActive !== undefined ? Boolean(store.isActive) : true;
+
+  if (!existingStore) {
+    try {
+      await setDoc(doc(db, 'stores', storeId), {
+        id: storeId,
+        ownerId: uid,
+        storeName: cleanStoreName,
+        ownerName,
+        city,
+        bio,
+        whatsapp,
+        photoURL,
+        isActive,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
+  } else {
+    try {
+      await updateDoc(doc(db, 'stores', storeId), {
+        storeName: cleanStoreName,
+        ownerName,
+        city,
+        bio,
+        whatsapp,
+        photoURL,
+        isActive,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
+  }
+
+  return {
+    id: storeId,
+    ownerId: uid,
+    storeName: cleanStoreName,
+    ownerName,
+    city,
+    bio,
+    whatsapp,
+    photoURL: photoURL || undefined,
+    isActive,
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
@@ -461,6 +580,18 @@ export async function saveProductToCloud(product: Product): Promise<void> {
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
+  }
+
+  // Register seller's store in real-time /stores collection if not legacy AI
+  if (product.sellerName && !LEGACY_AI_STORE_NAMES.has(product.sellerName.trim().toLowerCase())) {
+    saveStoreToCloud({
+      storeName: product.sellerName.trim(),
+      ownerName: auth.currentUser.displayName || product.sellerName.trim(),
+      city: product.sellerCity || 'Managua',
+      whatsapp: product.sellerPhone || '',
+      photoURL: auth.currentUser.photoURL || undefined,
+      isActive: true
+    }).catch((err) => console.warn('Store registration sync notice:', err));
   }
 }
 
@@ -779,39 +910,77 @@ export function subscribeToCloudProducts(
   return onSnapshot(
     q,
     (snapshot) => {
-      if (snapshot.empty) return;
-      const loaded: Product[] = snapshot.docs.map((docSnap) => {
-        const d = docSnap.data();
-        return {
-          id: String(d.id || docSnap.id),
-          authorId: d.authorId ? String(d.authorId) : undefined,
-          name: String(d.name || 'Prenda'),
-          price: Number(d.price) || 0,
-          originalPrice: typeof d.originalPrice === 'number' ? d.originalPrice : undefined,
-          category: String(d.category || 'Catálogo'),
-          condition: d.condition === 'nueva' ? 'nueva' : 'usada',
-          description: String(d.description || ''),
-          images: [String(d.primaryImageUrl || '/portada.jpg')],
-          sizes: String(d.sizesCsv || 'Única')
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean),
-          colors: String(d.colorsCsv || 'Original')
-            .split(',')
-            .map((c) => c.trim())
-            .filter(Boolean),
-          inStock: Boolean(d.inStock),
-          featured: Boolean(d.featured),
-          sellerName: d.sellerName ? String(d.sellerName) : undefined,
-          sellerPhone: d.sellerPhone ? String(d.sellerPhone) : undefined,
-          sellerCity: d.sellerCity ? String(d.sellerCity) : undefined,
-          createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : Date.now()
-        };
-      });
+      const loaded: Product[] = snapshot.docs
+        .map((docSnap) => {
+          const d = docSnap.data();
+          return {
+            id: String(d.id || docSnap.id),
+            authorId: d.authorId ? String(d.authorId) : undefined,
+            name: String(d.name || 'Prenda'),
+            price: Number(d.price) || 0,
+            originalPrice: typeof d.originalPrice === 'number' ? d.originalPrice : undefined,
+            category: String(d.category || 'Catálogo'),
+            condition: d.condition === 'nueva' ? 'nueva' : 'usada',
+            description: String(d.description || ''),
+            images: [String(d.primaryImageUrl || '/portada.jpg')],
+            sizes: String(d.sizesCsv || 'Única')
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean),
+            colors: String(d.colorsCsv || 'Original')
+              .split(',')
+              .map((c) => c.trim())
+              .filter(Boolean),
+            inStock: Boolean(d.inStock),
+            featured: Boolean(d.featured),
+            sellerName: d.sellerName ? String(d.sellerName) : undefined,
+            sellerPhone: d.sellerPhone ? String(d.sellerPhone) : undefined,
+            sellerCity: d.sellerCity ? String(d.sellerCity) : undefined,
+            createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : Date.now()
+          } as Product;
+        })
+        .filter((prod) => !isLegacyAiProduct(prod));
       onProductsLoaded(loaded);
     },
     (error) => {
       handleFirestoreError(error, OperationType.LIST, 'products');
+    }
+  );
+}
+
+export function subscribeToCloudStores(
+  onStoresLoaded: (stores: RegisteredStore[]) => void
+): () => void {
+  const q = query(collection(db, 'stores'), where('isActive', '==', true));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const loaded: RegisteredStore[] = snapshot.docs
+        .map((docSnap) => {
+          const d = docSnap.data();
+          return {
+            id: String(d.id || docSnap.id),
+            ownerId: String(d.ownerId || ''),
+            storeName: String(d.storeName || ''),
+            ownerName: String(d.ownerName || ''),
+            city: String(d.city || 'Managua'),
+            bio: d.bio ? String(d.bio) : undefined,
+            whatsapp: d.whatsapp ? String(d.whatsapp) : undefined,
+            photoURL: d.photoURL ? String(d.photoURL) : undefined,
+            isActive: Boolean(d.isActive),
+            createdAt: d.createdAt instanceof Timestamp ? d.createdAt.toMillis() : Date.now(),
+            updatedAt: d.updatedAt instanceof Timestamp ? d.updatedAt.toMillis() : Date.now()
+          } as RegisteredStore;
+        })
+        .filter(
+          (st) =>
+            st.storeName.trim().length > 0 &&
+            !LEGACY_AI_STORE_NAMES.has(st.storeName.trim().toLowerCase())
+        );
+      onStoresLoaded(loaded);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'stores');
     }
   );
 }
@@ -823,37 +992,42 @@ export function subscribeToCloudBusinessAds(
   return onSnapshot(
     q,
     (snapshot) => {
-      if (snapshot.empty) return;
-      const loaded: BusinessAd[] = snapshot.docs.map((docSnap) => {
-        const d = docSnap.data();
-        return {
-          id: String(d.id || docSnap.id),
-          authorId: d.authorId ? String(d.authorId) : undefined,
-          businessName: String(d.businessName || 'Negocio Nicaragua'),
-          ownerName: String(d.ownerName || 'Emprendedor'),
-          category: String(d.category || 'Servicios Profesionales'),
-          department: String(d.department || 'Managua'),
-          headline: String(d.headline || ''),
-          description: String(d.description || ''),
-          promoText: d.promoText ? String(d.promoText) : undefined,
-          imageUrl: String(d.imageUrl || '/portada.jpg'),
-          whatsappPhone: String(d.whatsappPhone || '50558898311'),
-          websiteOrSocialUrl: d.websiteOrSocialUrl ? String(d.websiteOrSocialUrl) : undefined,
-          ctaText: String(d.ctaText || 'Contactar por WhatsApp'),
-          planId: (d.planId as AdPlanId) || 'comunidad_gratis',
-          planName: String(d.planName || 'Plan Comunidad Libre'),
-          pricePaid: Number(d.pricePaid) || 0,
-          currency: d.currency === 'dolares' ? 'USD' : 'NIO',
-          paymentMethod: fromCloudPaymentMethod(String(d.paymentMethod || '')),
-          paymentStatus: fromCloudPaymentStatus(String(d.paymentStatus || '')),
-          paymentReference: d.paymentReference ? String(d.paymentReference) : undefined,
-          status: (d.status as BusinessAd['status']) || 'activo',
-          impressions: Number(d.impressions) || 1,
-          clicks: Number(d.clicks) || 0,
-          createdAt: formatTimestampToIso(d.createdAt),
-          expiresAt: String(d.expiresAtIso || new Date(Date.now() + 14 * 86400000).toISOString())
-        };
-      });
+      const loaded: BusinessAd[] = snapshot.docs
+        .map((docSnap) => {
+          const d = docSnap.data();
+          return {
+            id: String(d.id || docSnap.id),
+            authorId: d.authorId ? String(d.authorId) : undefined,
+            businessName: String(d.businessName || 'Negocio Nicaragua'),
+            ownerName: String(d.ownerName || 'Emprendedor'),
+            category: String(d.category || 'Servicios Profesionales'),
+            department: String(d.department || 'Managua'),
+            headline: String(d.headline || ''),
+            description: String(d.description || ''),
+            promoText: d.promoText ? String(d.promoText) : undefined,
+            imageUrl: String(d.imageUrl || '/portada.jpg'),
+            whatsappPhone: String(d.whatsappPhone || '50558898311'),
+            websiteOrSocialUrl: d.websiteOrSocialUrl ? String(d.websiteOrSocialUrl) : undefined,
+            ctaText: String(d.ctaText || 'Contactar por WhatsApp'),
+            planId: (d.planId as AdPlanId) || 'comunidad_gratis',
+            planName: String(d.planName || 'Plan Comunidad Libre'),
+            pricePaid: Number(d.pricePaid) || 0,
+            currency: d.currency === 'dolares' ? 'USD' : 'NIO',
+            paymentMethod: fromCloudPaymentMethod(String(d.paymentMethod || '')),
+            paymentStatus: fromCloudPaymentStatus(String(d.paymentStatus || '')),
+            paymentReference: d.paymentReference ? String(d.paymentReference) : undefined,
+            status: (d.status as BusinessAd['status']) || 'activo',
+            impressions: Number(d.impressions) || 1,
+            clicks: Number(d.clicks) || 0,
+            createdAt: formatTimestampToIso(d.createdAt),
+            expiresAt: String(d.expiresAtIso || new Date(Date.now() + 14 * 86400000).toISOString())
+          } as BusinessAd;
+        })
+        .filter(
+          (ad) =>
+            !/^ad-nic-[123]$/.test(ad.id) &&
+            !LEGACY_AI_STORE_NAMES.has(ad.businessName.trim().toLowerCase())
+        );
       onAdsLoaded(loaded);
     },
     (error) => {
@@ -1062,12 +1236,38 @@ export async function updateUserCloudProfilePhoto(
 ): Promise<string> {
   const effectiveUid = userId || auth.currentUser?.uid || 'user';
   const photoUrl = await uploadProductImageToStorage(photoUrlOrFile, `avatar-${effectiveUid}`);
+  const cleanPhotoUrl = truncateString(photoUrl, 900000, '');
 
   if (auth.currentUser) {
     try {
-      await updateProfile(auth.currentUser, { photoURL: photoUrl });
+      await updateProfile(auth.currentUser, { photoURL: cleanPhotoUrl });
     } catch (err) {
       console.info('Note on auth updateProfile:', err);
+    }
+
+    const uid = sanitizeId(auth.currentUser.uid);
+    try {
+      const userSnap = await getDoc(doc(db, 'users', uid));
+      if (userSnap.exists()) {
+        await updateDoc(doc(db, 'users', uid), {
+          photoURL: cleanPhotoUrl,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.info('Note updating user doc photoURL:', err);
+    }
+
+    try {
+      const storeSnap = await getDoc(doc(db, 'stores', uid));
+      if (storeSnap.exists()) {
+        await updateDoc(doc(db, 'stores', uid), {
+          photoURL: cleanPhotoUrl,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.info('Note updating store doc photoURL:', err);
     }
   }
 
