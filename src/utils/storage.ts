@@ -131,15 +131,28 @@ export function getSavedSettings(): StoreSettings {
   merged.platformBusinessName = saved.platformBusinessName || 'El Clóset de Jié Oficial';
   merged.disableHighResCatalogImages = Boolean(saved.disableHighResCatalogImages);
 
-  // Strip legacy placeholder AdSense IDs
-  if (merged.adSenseConfig) {
-    const cleanedAdSense = { ...merged.adSenseConfig };
-    if (cleanedAdSense.publisherId === 'ca-pub-0000000000000000') cleanedAdSense.publisherId = '';
-    if (cleanedAdSense.headerSlotId === '1029384756') cleanedAdSense.headerSlotId = '';
-    if (cleanedAdSense.inFeedSlotId === '5647382910') cleanedAdSense.inFeedSlotId = '';
-    if (cleanedAdSense.footerSlotId === '9081726354') cleanedAdSense.footerSlotId = '';
-    merged.adSenseConfig = cleanedAdSense;
+  // Strip legacy placeholder AdSense IDs and default to verified publisher ID
+  const cleanedAdSense = merged.adSenseConfig
+    ? { ...merged.adSenseConfig }
+    : {
+        enabled: true,
+        publisherId: 'ca-pub-8544467281217488',
+        headerSlotId: '',
+        inFeedSlotId: '',
+        footerSlotId: '',
+        autoAdsEnabled: true,
+        showFallbackSponsorPrompt: true
+      };
+  if (
+    !cleanedAdSense.publisherId ||
+    cleanedAdSense.publisherId === 'ca-pub-0000000000000000'
+  ) {
+    cleanedAdSense.publisherId = 'ca-pub-8544467281217488';
   }
+  if (cleanedAdSense.headerSlotId === '1029384756') cleanedAdSense.headerSlotId = '';
+  if (cleanedAdSense.inFeedSlotId === '5647382910') cleanedAdSense.inFeedSlotId = '';
+  if (cleanedAdSense.footerSlotId === '9081726354') cleanedAdSense.footerSlotId = '';
+  merged.adSenseConfig = cleanedAdSense;
 
   // Enforce requested owner security key: strictly jordan#$29 and purge legacy 1234
   if (!saved.adminPin || saved.adminPin === '1234' || saved.adminPin.length === 4) {

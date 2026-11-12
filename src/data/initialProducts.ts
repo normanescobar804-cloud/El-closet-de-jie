@@ -33,7 +33,16 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   platformCollectionMethod: 'digital_link',
   platformPaymentLink: 'https://paypal.me/elclosetdejie',
   platformBusinessName: 'El Clóset de Jié Oficial',
-  disableHighResCatalogImages: false // Carga normal por defecto, configurable por el administrador
+  disableHighResCatalogImages: false, // Carga normal por defecto, configurable por el administrador
+  adSenseConfig: {
+    enabled: true,
+    publisherId: 'ca-pub-8544467281217488',
+    headerSlotId: '',
+    inFeedSlotId: '',
+    footerSlotId: '',
+    autoAdsEnabled: true,
+    showFallbackSponsorPrompt: true
+  }
 };
 
 export const PRICE_RANGE_FILTERS: PriceRangeFilter[] = [

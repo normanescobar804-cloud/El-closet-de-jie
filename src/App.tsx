@@ -402,7 +402,13 @@ export default function App() {
     const unsubPlatformConfig = subscribeToPlatformConfig((cloudCfg) => {
       setStoreSettings((prev) => ({
         ...prev,
-        adSenseConfig: cloudCfg.adSenseConfig,
+        adSenseConfig: {
+          ...cloudCfg.adSenseConfig,
+          publisherId:
+            cloudCfg.adSenseConfig.publisherId ||
+            prev.adSenseConfig?.publisherId ||
+            'ca-pub-8544467281217488'
+        },
         platformPaymentLink: cloudCfg.platformPaymentLink || prev.platformPaymentLink,
         platformFeePercent: cloudCfg.platformFeePercent ?? prev.platformFeePercent
       }));
@@ -555,8 +561,6 @@ export default function App() {
         script.crossOrigin = 'anonymous';
         document.head.appendChild(script);
       }
-    } else if (existingMeta) {
-      existingMeta.remove();
     }
   }, [storeSettings.adSenseConfig]);
 

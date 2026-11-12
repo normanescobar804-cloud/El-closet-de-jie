@@ -102,7 +102,7 @@ export const AD_PLANS: AdPlanConfig[] = [
 
 export const DEFAULT_ADSENSE_CONFIG: GoogleAdSenseConfig = {
   enabled: true,
-  publisherId: '',
+  publisherId: 'ca-pub-8544467281217488',
   headerSlotId: '',
   inFeedSlotId: '',
   footerSlotId: '',
