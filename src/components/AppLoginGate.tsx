@@ -23,11 +23,13 @@ import { registerCustomerAccount, loginCustomerAccount } from '../utils/storage'
 interface AppLoginGateProps {
   onLoginSuccess: (user: UserAccount) => void;
   onGoogleLogin?: () => Promise<void>;
+  onOpenPrivacyPolicy?: () => void;
 }
 
 export const AppLoginGate: React.FC<AppLoginGateProps> = ({
   onLoginSuccess,
-  onGoogleLogin
+  onGoogleLogin,
+  onOpenPrivacyPolicy
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [identifier, setIdentifier] = useState('');
@@ -524,7 +526,7 @@ export const AppLoginGate: React.FC<AppLoginGateProps> = ({
         </div>
 
         {/* Security Trust Badges */}
-        <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-violet-200/80">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[11px] text-violet-200/80">
           <span className="flex items-center gap-1">
             <Lock className="w-3 h-3 text-emerald-400" />
             <span>Encriptación de Sesión</span>
@@ -534,6 +536,18 @@ export const AppLoginGate: React.FC<AppLoginGateProps> = ({
             <ShieldCheck className="w-3 h-3 text-amber-300" />
             <span>Firebase Auth Seguro</span>
           </span>
+          {onOpenPrivacyPolicy && (
+            <>
+              <span>•</span>
+              <button
+                type="button"
+                onClick={onOpenPrivacyPolicy}
+                className="underline hover:text-white transition-colors cursor-pointer"
+              >
+                Privacidad y Cookies (AdSense)
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

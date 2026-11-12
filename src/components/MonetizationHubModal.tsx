@@ -58,6 +58,7 @@ import {
   saveAllBankWithdrawals
 } from '../utils/monetization';
 import { DEFAULT_ADSENSE_CONFIG } from '../utils/advertising';
+import { OFFICIAL_APP_URLS } from '../utils/appUrl';
 import { formatCurrency } from '../utils/storage';
 import {
   savePlatformEarningToCloud,
@@ -1569,6 +1570,126 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
                   </div>
                 </div>
               </form>
+
+              {/* Google AdSense Submission & Verification Assistant */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 via-sky-950 to-indigo-950 text-white space-y-4 shadow-md border border-sky-500/30">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-serif text-base font-black text-white flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <span>Guía para Registrar y Verificar en Google AdSense</span>
+                    </h4>
+                    <p className="text-[11px] text-sky-200 mt-0.5">
+                      La app ya incluye <code>robots.txt</code> para <code>Mediapartners-Google</code>, divulgación de cookies en Privacidad e inyección automática de etiqueta <code>google-adsense-account</code>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Readiness Checklist */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px]">
+                  <div className="p-2.5 rounded-xl bg-white/10 border border-white/15 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Política de Privacidad y Cookies AdSense lista</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/10 border border-white/15 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Rastreador AdSense habilitado en robots.txt</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/10 border border-white/15 flex items-center gap-2">
+                    {isAdSenseActive ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-amber-300 shrink-0" />
+                    )}
+                    <span>
+                      {isAdSenseActive
+                        ? 'Publisher ID ca-pub conectado'
+                        : 'Falta ingresar tu ID ca-pub-...'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Live Public Site URL + ads.txt Generator */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-black/30 border border-white/10 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300 block">
+                      1. URL pública para registrar en Google AdSense:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 bg-black/40 px-2.5 py-1.5 rounded-lg font-mono text-[11px] text-amber-300 truncate">
+                        {OFFICIAL_APP_URLS.githubPagesUrl}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(OFFICIAL_APP_URLS.githubPagesUrl);
+                          showBanner('success', 'URL pública copiada para pegarla en Google AdSense.');
+                        }}
+                        className="px-2.5 py-1.5 bg-white/15 hover:bg-white/25 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-black/30 border border-white/10 space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300 block">
+                      2. Archivo ads.txt autorizado (cuando tengas tu ca-pub):
+                    </span>
+                    {(() => {
+                      const pubNumeric = (adSenseForm.publisherId || '')
+                        .trim()
+                        .replace(/^ca-pub-/, 'pub-');
+                      const isPubReady = /^pub-\d{10,20}$/.test(pubNumeric);
+                      const adsTxtLine = isPubReady
+                        ? `google.com, ${pubNumeric}, DIRECT, f08c47fec0942fa0`
+                        : 'google.com, pub-TU_ID_AQUI, DIRECT, f08c47fec0942fa0';
+
+                      return (
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 bg-black/40 px-2.5 py-1.5 rounded-lg font-mono text-[10px] text-emerald-300 truncate">
+                            {adsTxtLine}
+                          </code>
+                          <button
+                            type="button"
+                            disabled={!isPubReady}
+                            onClick={() => {
+                              const blob = new Blob([`${adsTxtLine}\n`], {
+                                type: 'text/plain;charset=utf-8'
+                              });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = 'ads.txt';
+                              a.click();
+                              URL.revokeObjectURL(url);
+                              showBanner('success', 'Archivo ads.txt descargado correctamente.');
+                            }}
+                            className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-stone-950 rounded-lg font-black text-[11px] flex items-center gap-1 cursor-pointer shrink-0"
+                          >
+                            <ArrowDownToLine className="w-3.5 h-3.5" />
+                            <span>ads.txt</span>
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-sky-100/90 leading-relaxed">
+                  <strong>Importante:</strong> Por políticas de seguridad de Google, debes iniciar sesión con tu cuenta de Google en{' '}
+                  <a
+                    href="https://www.google.com/adsense/start/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline font-bold text-amber-300"
+                  >
+                    adsense.google.com
+                  </a>{' '}
+                  para dar de alta el sitio y obtener tu código <code>ca-pub-...</code>. Una vez que Google te lo entregue, pégalo arriba y pulsa <strong>Guardar Google AdSense</strong>. (Nota: para que el bot de Google apruebe el sitio más rápido durante la revisión, asegúrate de que la portada/contenido pueda revisarse o verifica mediante etiqueta meta/HTML).
+                </p>
+              </div>
 
               {/* Real AdSense Settlement Entry (strictly real confirmed payouts) */}
               <form

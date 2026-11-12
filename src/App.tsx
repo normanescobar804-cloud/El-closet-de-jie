@@ -523,6 +523,43 @@ export default function App() {
     };
   }, []);
 
+  // --- 🌐 Global Google AdSense Verification Meta Tag & Auto-Ads Script ---
+  useEffect(() => {
+    const adCfg = storeSettings.adSenseConfig;
+    const pubId = (adCfg?.publisherId || '').trim();
+    const isRealPub =
+      adCfg?.enabled !== false &&
+      /^ca-pub-\d{10,20}$/.test(pubId) &&
+      pubId !== 'ca-pub-0000000000000000';
+
+    const existingMeta = document.querySelector('meta[name="google-adsense-account"]');
+    if (isRealPub) {
+      if (existingMeta) {
+        existingMeta.setAttribute('content', pubId);
+      } else {
+        const meta = document.createElement('meta');
+        meta.name = 'google-adsense-account';
+        meta.content = pubId;
+        document.head.appendChild(meta);
+      }
+
+      const existingScript = document.querySelector(
+        'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]'
+      );
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(
+          pubId
+        )}`;
+        script.crossOrigin = 'anonymous';
+        document.head.appendChild(script);
+      }
+    } else if (existingMeta) {
+      existingMeta.remove();
+    }
+  }, [storeSettings.adSenseConfig]);
+
   // --- 📊 Traffic & Visit Analytics & Real-Time Duration Recording ---
   useEffect(() => {
     initSessionTimer();
@@ -1094,6 +1131,7 @@ export default function App() {
         <AppLoginGate
           onLoginSuccess={handleLoginUser}
           onGoogleLogin={handleGoogleLogin}
+          onOpenPrivacyPolicy={() => setIsPrivacyOpen(true)}
         />
       )}
 

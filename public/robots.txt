@@ -1,6 +1,12 @@
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
 User-agent: *
 Allow: /
 Allow: /portada.jpg
 Allow: /icon.svg
 
-Sitemap: https://elclosetdejie.com/sitemap.xml
+Sitemap: https://normanescobar804-cloud.github.io/El-closet-de-jie/sitemap.xml

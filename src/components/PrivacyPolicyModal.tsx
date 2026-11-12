@@ -17,7 +17,7 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[60] overflow-y-auto bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -115,8 +115,44 @@ export const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({
             </p>
           </section>
 
+          <section className="space-y-2 p-4 rounded-2xl bg-sky-50/70 border border-sky-200">
+            <h4 className="font-bold text-sky-950 text-sm flex items-center gap-1.5">
+              <CheckCircle className="w-4 h-4 text-sky-600" />
+              5. Publicidad de Google AdSense y Uso de Cookies
+            </h4>
+            <p className="text-stone-700">
+              Esta plataforma puede utilizar servicios publicitarios de <strong>Google AdSense</strong> y proveedores terceros que emplean cookies para mostrar anuncios relevantes basados en tus visitas previas a este sitio o a otros sitios web en Internet.
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-stone-600">
+              <li>
+                El uso de cookies publicitarias por parte de Google permite a Google y a sus socios mostrar anuncios a los usuarios en función de su navegación.
+              </li>
+              <li>
+                Puedes inhabilitar la publicidad personalizada en cualquier momento visitando la{' '}
+                <a
+                  href="https://myadcenter.google.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sky-700 font-bold underline"
+                >
+                  Configuración de Anuncios de Google
+                </a>{' '}
+                o{' '}
+                <a
+                  href="https://www.aboutads.info/choices/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sky-700 font-bold underline"
+                >
+                  AboutAds.info
+                </a>
+                .
+              </li>
+            </ul>
+          </section>
+
           <section className="space-y-2">
-            <h4 className="font-bold text-stone-900 text-sm">5. Contacto para Privacidad y Soporte</h4>
+            <h4 className="font-bold text-stone-900 text-sm">6. Contacto para Privacidad y Soporte</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-stone-50 border border-stone-200">
                 <Mail className="w-4 h-4 text-violet-600 shrink-0" />
