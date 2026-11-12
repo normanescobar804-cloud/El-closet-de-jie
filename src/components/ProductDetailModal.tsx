@@ -842,9 +842,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       {formatCurrency(product.originalPrice, currency, storeSettings.exchangeRate)}
                     </span>
                   )}
-                  {currency === 'dolares' && (
-                    <span className="text-xs text-stone-500">
+                  {(currency === 'dolares' || currency === 'USD') ? (
+                    <span className="text-xs text-stone-500 tabular-nums">
                       (C$ {product.price.toFixed(2)})
+                    </span>
+                  ) : (
+                    <span className="text-xs text-stone-500 tabular-nums">
+                      (≈ $ {(product.price / (storeSettings.exchangeRate || 36.5)).toFixed(2)} USD)
                     </span>
                   )}
                 </div>

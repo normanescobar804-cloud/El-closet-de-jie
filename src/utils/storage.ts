@@ -91,14 +91,18 @@ export function saveCart(cart: CartItem[]): void {
   saveToStorage(STORAGE_KEYS.CART, cart);
 }
 
-// Currency Mode ('cordobas' | 'dolares')
+// Currency Mode ('cordobas' | 'dolares', compatible with 'NIO' | 'USD')
+export function isDollarCurrency(currency?: CurrencyType): boolean {
+  return currency === 'dolares' || currency === 'USD';
+}
+
 export function getSavedCurrency(): CurrencyType {
   const saved = getFromStorage<CurrencyType>(STORAGE_KEYS.CURRENCY, 'cordobas');
-  return saved === 'dolares' ? 'dolares' : 'cordobas';
+  return isDollarCurrency(saved) ? 'dolares' : 'cordobas';
 }
 
 export function saveCurrency(currency: CurrencyType): void {
-  saveToStorage(STORAGE_KEYS.CURRENCY, currency);
+  saveToStorage(STORAGE_KEYS.CURRENCY, isDollarCurrency(currency) ? 'dolares' : 'cordobas');
 }
 
 // Store Settings
@@ -527,7 +531,7 @@ export function formatCurrency(
   currency: CurrencyType = 'cordobas',
   exchangeRate: number = 36.5
 ): string {
-  if (currency === 'dolares') {
+  if (isDollarCurrency(currency)) {
     const usd = amountInCordobas / (exchangeRate || 36.5);
     return `$ ${usd.toFixed(2)}`;
   }

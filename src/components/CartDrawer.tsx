@@ -672,7 +672,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   id="btn-currency-cordobas"
                   onClick={() => onCurrencyChange('cordobas')}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    currency === 'cordobas'
+                    currency !== 'dolares' && currency !== 'USD'
                       ? 'bg-violet-600 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
@@ -683,7 +683,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   id="btn-currency-dolares"
                   onClick={() => onCurrencyChange('dolares')}
                   className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                    currency === 'dolares'
+                    currency === 'dolares' || currency === 'USD'
                       ? 'bg-violet-600 text-white shadow-xs'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}

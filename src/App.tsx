@@ -60,6 +60,7 @@ import {
   saveCurrency,
   resetProductsToDefault,
   formatCurrency,
+  isDollarCurrency,
   getSavedRecentlyViewed,
   saveRecentlyViewed,
   clearRecentlyViewed,
@@ -256,6 +257,17 @@ export default function App() {
     setChatInitialConversation(conversationId);
     setIsChatOpen(true);
     setUnreadChatCount(0);
+  };
+
+  const handleCurrencyChange = (nextCurrency: CurrencyType) => {
+    const normalized: CurrencyType = isDollarCurrency(nextCurrency) ? 'dolares' : 'cordobas';
+    setCurrency(normalized);
+    saveCurrency(normalized);
+    addToast(
+      'info',
+      normalized === 'dolares' ? '🇺🇸 Precios en Dólares ($ USD)' : '🇳🇮 Precios en Córdobas (C$ NIO)',
+      `Conversión en tiempo real (Tasa: $1 = C$ ${(storeSettings.exchangeRate || 36.5).toFixed(2)})`
+    );
   };
 
   // --- Filtering & Search States ---
@@ -1145,7 +1157,7 @@ export default function App() {
         cartCount={totalCartCount}
         cartTotal={cartSubtotal}
         currency={currency}
-        onCurrencyChange={setCurrency}
+        onCurrencyChange={handleCurrencyChange}
         favoritesCount={favorites.length}
         unreadNotificationsCount={unreadNotificationsCount}
         unreadChatCount={unreadChatCount}
@@ -2260,7 +2272,7 @@ export default function App() {
         onClose={() => setIsCartOpen(false)}
         cart={cart}
         currency={currency}
-        onCurrencyChange={setCurrency}
+        onCurrencyChange={handleCurrencyChange}
         storeSettings={storeSettings}
         currentUser={currentUser}
         onUpdateQuantity={handleUpdateQuantity}

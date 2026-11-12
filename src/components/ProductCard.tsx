@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, Plus, Minus, ShoppingBag, Eye, Star, Store, Flame, ZoomIn, WifiOff, MessageCircle } from 'lucide-react';
 import { CurrencyType, Product } from '../types';
-import { formatCurrency, getOptimizedCatalogImageUrl } from '../utils/storage';
+import { formatCurrency, getOptimizedCatalogImageUrl, isDollarCurrency } from '../utils/storage';
 
 interface ProductCardProps {
   product: Product;
@@ -312,11 +312,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        {/* Price Row */}
+        {/* Price Row with Real-Time Currency Conversion */}
         <div>
           <div className="flex items-baseline gap-1.5 flex-wrap tabular-nums">
             <span className="text-sm sm:text-base font-black text-stone-900">
               {formatCurrency(product.price, currency, exchangeRate)}
+            </span>
+            <span className="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-stone-100 text-stone-600">
+              {isDollarCurrency(currency) ? 'USD' : 'NIO'}
             </span>
             {product.originalPrice && product.originalPrice > product.price && (
               <span className="text-[10px] sm:text-xs text-stone-400 line-through">
@@ -324,11 +327,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               </span>
             )}
           </div>
-          {(currency === 'dolares' || currency === 'USD') && (
-            <div className="text-[10px] text-stone-400 tabular-nums">
-              (C$ {product.price.toFixed(2)})
-            </div>
-          )}
+          <div className="text-[10px] text-stone-500 tabular-nums mt-0.5">
+            {isDollarCurrency(currency)
+              ? `Equiv. C$ ${product.price.toFixed(2)}`
+              : `≈ $ ${(product.price / (exchangeRate || 36.5)).toFixed(2)} USD`}
+          </div>
         </div>
 
         {/* Action Controls */}

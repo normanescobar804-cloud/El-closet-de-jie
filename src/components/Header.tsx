@@ -19,7 +19,7 @@ import {
   Globe
 } from 'lucide-react';
 import { BusinessAd, CategoryFilter, CurrencyType, Product, RegisteredStore, StoreSettings, UserAccount } from '../types';
-import { formatCurrency } from '../utils/storage';
+import { formatCurrency, isDollarCurrency } from '../utils/storage';
 import { SearchAutocomplete } from './SearchAutocomplete';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -105,7 +105,8 @@ export const Header: React.FC<HeaderProps> = ({
   isOwnerCreator = false,
   onOpenStoresDirectory
 }) => {
-  const isCordobas = currency === 'NIO' || currency === 'cordobas';
+  const isCordobas = !isDollarCurrency(currency);
+  const activeExchangeRate = storeSettings.exchangeRate || 36.5;
 
   const handleFocusSearch = () => {
     const el = (document.getElementById('search-input-desktop') ||
@@ -202,11 +203,12 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-open-my-store-header"
                 onClick={onOpenFreeSellerPortal || onOpenEditStore}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-full text-xs font-black transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-full text-[11px] sm:text-xs font-black transition-all shadow-xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                 title="Abrir Mi Tienda: Sube tus productos, fotos y gestiona tus ventas"
               >
-                <Store className="w-3.5 h-3.5 text-amber-200" />
-                <span>Mi Tienda</span>
+                <Store className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                <span className="hidden sm:inline">Mi Tienda</span>
+                <span className="sm:hidden">Tienda</span>
               </button>
             )}
 
@@ -215,7 +217,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-open-stores-directory-header"
                 onClick={onOpenStoresDirectory}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 text-violet-950 border border-violet-200/90 rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 text-violet-950 border border-violet-200/90 rounded-full text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                 title="Buscar y visitar tiendas de ropa y boutiques asociadas"
               >
                 <span className="text-xs">🏬</span>
@@ -228,11 +230,11 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-open-monetization-header"
                 onClick={onOpenMonetization}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 rounded-full text-xs font-black transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 rounded-full text-[11px] sm:text-xs font-black transition-all shadow-2xs active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
                 title="Panel Exclusivo del Creador: Ganancias en Tiempo Real y Retiros a Banco o PayPal"
               >
                 <span className="text-xs">💰</span>
-                <span>Ganancias Creador</span>
+                <span className="hidden md:inline">Ganancias Creador</span>
               </button>
             )}
 
@@ -241,30 +243,53 @@ export const Header: React.FC<HeaderProps> = ({
               <PWAInstallButton variant="header" />
             </div>
 
-            {/* Currency Selector (Córdobas / Dólares) - Always accessible on mobile & desktop */}
-            <div className="inline-flex rounded-full bg-stone-100 p-0.5 border border-stone-200/90 text-[10px] sm:text-[11px] font-bold shrink-0">
+            {/* Prominent Global Currency Selector (Córdobas C$ <-> Dólares $) */}
+            <div
+              id="global-currency-selector"
+              role="group"
+              aria-label="Selector global de divisa"
+              className="inline-flex items-center gap-1 bg-gradient-to-r from-stone-900 via-violet-950 to-indigo-950 p-1 rounded-full border border-violet-400/40 shadow-md ring-2 ring-violet-200/70 shrink-0"
+              title={`Cambio instantáneo de precios en todo el catálogo (Tasa actual: $1 = C$ ${activeExchangeRate.toFixed(2)})`}
+            >
+              <span className="hidden xl:inline-flex items-center gap-1 pl-2 pr-1 text-[10px] font-bold text-amber-200 uppercase tracking-wider select-none">
+                <Globe className="w-3 h-3 text-amber-300" />
+                <span>Divisa:</span>
+              </span>
               <button
-                onClick={() => onCurrencyChange('NIO')}
-                className={`px-2 sm:px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                type="button"
+                id="btn-header-currency-nio"
+                onClick={() => onCurrencyChange('cordobas')}
+                aria-pressed={isCordobas}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 active:scale-95 ${
                   isCordobas
-                    ? 'bg-violet-600 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-gradient-to-r from-amber-400 to-amber-300 text-stone-950 shadow-sm'
+                    : 'text-stone-200 hover:text-white hover:bg-white/10'
                 }`}
-                title="Mostrar precios en Córdobas (C$)"
+                title="Mostrar precios en Córdobas Nicaragüenses (C$)"
               >
-                C$
+                <span aria-hidden="true">🇳🇮</span>
+                <span className="sm:hidden">C$</span>
+                <span className="hidden sm:inline">Córdoba (C$)</span>
               </button>
               <button
-                onClick={() => onCurrencyChange('USD')}
-                className={`px-2 sm:px-2.5 py-1 rounded-full transition-all cursor-pointer whitespace-nowrap ${
+                type="button"
+                id="btn-header-currency-usd"
+                onClick={() => onCurrencyChange('dolares')}
+                aria-pressed={!isCordobas}
+                className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 active:scale-95 ${
                   !isCordobas
-                    ? 'bg-violet-600 text-white shadow-2xs'
-                    : 'text-stone-600 hover:text-stone-900'
+                    ? 'bg-gradient-to-r from-emerald-400 to-teal-300 text-stone-950 shadow-sm'
+                    : 'text-stone-200 hover:text-white hover:bg-white/10'
                 }`}
-                title="Mostrar precios en Dólares ($)"
+                title="Convertir precios en tiempo real a Dólares Americanos ($)"
               >
-                $
+                <span aria-hidden="true">🇺🇸</span>
+                <span className="sm:hidden">$</span>
+                <span className="hidden sm:inline">Dólar ($)</span>
               </button>
+              <span className="hidden lg:inline-block px-2 py-0.5 mr-0.5 rounded-full bg-white/10 text-[10px] font-mono font-bold text-sky-200 tabular-nums select-none">
+                1$={activeExchangeRate.toFixed(1)}
+              </span>
             </div>
 
             {/* Customer Account Profile / Sign In (Desktop) */}
