@@ -8,8 +8,10 @@ export const OFFICIAL_APP_URLS = {
   devUrl: 'https://ais-dev-mxlpvoegxypwao4mnzr336-798504950706.us-east1.run.app',
   // Repositorio de GitHub
   githubRepoUrl: 'https://github.com/normanescobar804-cloud/El-closet-de-jie.git',
-  // URL pública en vivo en GitHub Pages
-  githubPagesUrl: 'https://normanescobar804-cloud.github.io/El-closet-de-jie/',
+  // URL pública en vivo en GitHub Pages (raíz para Google AdSense)
+  githubPagesUrl: 'https://normanescobar804-cloud.github.io/',
+  // Dominio exacto sin rutas para pegar en Google AdSense ("Agregar sitio")
+  adsenseDomain: 'normanescobar804-cloud.github.io',
   // ID de la aplicación para Google Play Store
   packageId: 'com.elclosetdejie.twa',
 };

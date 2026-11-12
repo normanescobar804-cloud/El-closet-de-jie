@@ -9,4 +9,4 @@ Allow: /
 Allow: /portada.jpg
 Allow: /icon.svg
 
-Sitemap: https://normanescobar804-cloud.github.io/El-closet-de-jie/sitemap.xml
+Sitemap: https://normanescobar804-cloud.github.io/sitemap.xml

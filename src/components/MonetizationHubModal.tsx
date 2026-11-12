@@ -1613,17 +1613,20 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                   <div className="p-3 rounded-xl bg-black/30 border border-white/10 space-y-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300 block">
-                      1. URL pública para registrar en Google AdSense:
+                      1. Dominio exacto para pegar en Google AdSense (&ldquo;Sitio web&rdquo;):
                     </span>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 bg-black/40 px-2.5 py-1.5 rounded-lg font-mono text-[11px] text-amber-300 truncate">
-                        {OFFICIAL_APP_URLS.githubPagesUrl}
+                        {OFFICIAL_APP_URLS.adsenseDomain}
                       </code>
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(OFFICIAL_APP_URLS.githubPagesUrl);
-                          showBanner('success', 'URL pública copiada para pegarla en Google AdSense.');
+                          navigator.clipboard.writeText(OFFICIAL_APP_URLS.adsenseDomain);
+                          showBanner(
+                            'success',
+                            `Dominio copiado: ${OFFICIAL_APP_URLS.adsenseDomain} (pégalo sin https:// ni barras /).`
+                          );
                         }}
                         className="px-2.5 py-1.5 bg-white/15 hover:bg-white/25 rounded-lg font-bold text-[11px] flex items-center gap-1 cursor-pointer shrink-0"
                       >
@@ -1631,6 +1634,10 @@ export const MonetizationHubModal: React.FC<MonetizationHubModalProps> = ({
                         <span>Copiar</span>
                       </button>
                     </div>
+                    <p className="text-[10px] text-sky-200/80">
+                      ⚠️ No escribas <code>github.com/...</code> ni barras <code>/</code>; usa exactamente{' '}
+                      <strong>{OFFICIAL_APP_URLS.adsenseDomain}</strong>.
+                    </p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-black/30 border border-white/10 space-y-2">
