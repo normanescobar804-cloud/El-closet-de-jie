@@ -1,0 +1,12 @@
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: *
+Allow: /
+Allow: /portada.jpg
+Allow: /icon.svg
+
+Sitemap: https://normanescobar804-cloud.github.io/sitemap.xml
